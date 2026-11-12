@@ -31,6 +31,7 @@
 #include "hashtable.h"
 #include "arena.h"
 #include "chunker.h"
+#include "tree.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -272,6 +273,16 @@ int object_info(const Store *store, const char *bucket, const char *key,
  * @return         0 on success, negative on error.
  */
 int object_list(const Store *store, const char *bucket, ListResult *result);
+
+/**
+ * bucket_tree_view — construct and display the hierarchical directory tree (Trie/Tree)
+ * for all objects stored inside a bucket.
+ *
+ * @param store    Active store.
+ * @param bucket   Bucket name.
+ * @return         0 on success, negative on error.
+ */
+int bucket_tree_view(const Store *store, const char *bucket);
 
 /**
  * list_result_free — free all resources in a ListResult.

@@ -1,8 +1,26 @@
-*.exe
-*.obj
-*.pdb
-*.ilk
+# AWS Credentials & Secrets (CRITICAL: Never commit to Git)
+aws_config.json
+*.pem
+*.key
+.env
+
+# Local Storage Root (Chunks, Manifests, Database)
 storage_root/
-.vs/
-*.user
-*.suo
+
+# Compiled Binaries & Objects
+*.exe
+*.o
+*.obj
+*.a
+*.dll
+*.so
+*.dylib
+
+# Temporary & Backup files
+main_old_backup.c
+
+# IDE & OS files
+.vscode/
+.idea/
+Thumbs.db
+[Dd]esktop.ini

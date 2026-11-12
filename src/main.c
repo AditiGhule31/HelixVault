@@ -56,7 +56,7 @@ static void test_sha256(void) {
     char hex[SHA256_HEX_SIZE];
     sha256_hex(digest, hex);
     const char *expected =
-        "ba7816bf8f01cfea414140de5dae2ec73b00361bbef0469348423f656b0f5d3";
+        "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
     if (strcmp(hex, expected) == 0)
         printf("  [sha256] PASS  'abc' -> %s\n", hex);
     else
@@ -308,8 +308,259 @@ static void cmd_gc(Store *s) {
 }
 
 static void cmd_stats(Store *s) {
+    char **bnames = NULL;
+    size_t bcount = 0;
+    size_t total_objects = 0;
+    uint64_t total_logical_bytes = 0;
+
+    if (bucket_list(s, &bnames, &bcount) == 0 && bnames) {
+        for (size_t b = 0; b < bcount; b++) {
+            ListResult lres;
+            if (object_list(s, bnames[b], &lres) == 0) {
+                total_objects += lres.count;
+                for (size_t o = 0; o < lres.count; o++) {
+                    total_logical_bytes += lres.items[o].size;
+                }
+                list_result_free(&lres);
+            }
+            free(bnames[b]);
+        }
+        free(bnames);
+    }
+
+    uint64_t physical_bytes = s->pool ? s->pool->total_bytes : 0;
+    uint64_t bytes_saved = (total_logical_bytes > physical_bytes) ? (total_logical_bytes - physical_bytes) : 0;
+    double dedup_ratio = (total_logical_bytes > 0) ? ((double)bytes_saved / (double)total_logical_bytes * 100.0) : 0.0;
+
+    printf("\n=================================================================\n");
+    printf("              STORAGE & DEDUPLICATION ANALYTICS                 \n");
+    printf("=================================================================\n");
+    printf("  Total Buckets               : %zu\n", bcount);
+    printf("  Total Logical Objects       : %zu\n", total_objects);
+    printf("  Total Logical Data Size     : ");
+    print_size(total_logical_bytes);
+    printf(" (%llu Bytes)\n", (unsigned long long)total_logical_bytes);
+    printf("  Unique Physical Chunks      : %zu\n", s->pool ? s->pool->total_chunks : 0);
+    printf("  Physical Storage Pool Used  : ");
+    print_size(physical_bytes);
+    printf(" (%llu Bytes)\n", (unsigned long long)physical_bytes);
+    printf("  Storage Space Saved         : ");
+    print_size(bytes_saved);
+    printf(" (%llu Bytes)\n", (unsigned long long)bytes_saved);
+    printf("  Deduplication Ratio         : %.2f %%\n", dedup_ratio);
+    printf("=================================================================\n\n");
+
     storage_pool_stats(s->pool, "pool");
     arena_stats(s->meta_arena, "meta_arena");
+}
+
+static void cmd_tree(Store *s, int argc, char **argv) {
+    if (argc >= 1) {
+        bucket_tree_view(s, argv[0]);
+    } else {
+        char **names = NULL;
+        size_t count = 0;
+        if (bucket_list(s, &names, &count) == 0 && count > 0) {
+            printf("\n--- Displaying File Hierarchy Trees for all %zu bucket(s) ---\n", count);
+            for (size_t i = 0; i < count; i++) {
+                bucket_tree_view(s, names[i]);
+                free(names[i]);
+            }
+            free(names);
+        } else {
+            printf("No buckets found. Create a bucket first with 'mb <bucket>'.\n");
+        }
+    }
+}
+
+static void cmd_aws_sync(int argc, char **argv) {
+    char cmd[1024];
+    if (argc >= 1) {
+        snprintf(cmd, sizeof(cmd), "python aws_sync.py sync %s", argv[0]);
+    } else {
+        snprintf(cmd, sizeof(cmd), "python aws_sync.py sync");
+    }
+    system(cmd);
+}
+
+static void cmd_aws_setup(void) {
+    system("python aws_sync.py setup");
+}
+
+static void cmd_aws_list(int argc, char **argv) {
+    char cmd[1024];
+    if (argc >= 1) {
+        snprintf(cmd, sizeof(cmd), "python aws_sync.py list %s", argv[0]);
+    } else {
+        snprintf(cmd, sizeof(cmd), "python aws_sync.py list");
+    }
+    system(cmd);
+}
+
+static void run_interactive_menu(Store *s, const char *root) {
+    char line[512];
+    int choice = -1;
+
+    while (1) {
+        printf("\n=================================================================\n");
+        printf("  HELIXVAULT: S3-INSPIRED DEDUPLICATING OBJECT STORAGE (C11)\n");
+        printf("  Department of IT - Group 14 (VIT Pune)\n");
+        printf("=================================================================\n");
+        printf("  1. Create Bucket (mb)\n");
+        printf("  2. Delete Bucket (rb)\n");
+        printf("  3. List All Buckets (lb)\n");
+        printf("  4. Upload File / Object (put) -> [Content-Based Deduplication]\n");
+        printf("  5. Download File / Object (get)\n");
+        printf("  6. Delete Object (del)        -> [Decrements RefCount]\n");
+        printf("  7. List Objects in Bucket (ls)\n");
+        printf("  8. View File Hierarchy Tree (tree) -> [TREE / TRIE DATA STRUCTURE]\n");
+        printf("  9. Show Object Metadata (info)\n");
+        printf(" 10. Run Garbage Collection Sweep (gc) -> [Reclaims 0-RefCount Chunks]\n");
+        printf(" 11. View Storage & Deduplication Stats (stats)\n");
+        printf(" 12. Run Correctness Self-Test Suite (selftest)\n");
+        printf(" 13. Sync to Real AWS S3 Cloud (sync) -> [AWS Boto3 SDK]\n");
+        printf(" 14. Configure AWS Credentials (aws-setup)\n");
+        printf(" 15. List Objects in AWS S3 Cloud Bucket (aws-list)\n");
+        printf("  0. Exit\n");
+        printf("=================================================================\n");
+        printf("Enter choice (0-15): ");
+
+        if (!fgets(line, sizeof(line), stdin)) break;
+        if (sscanf(line, "%d", &choice) != 1) {
+            printf("Invalid input. Please enter a number between 0 and 15.\n");
+            continue;
+        }
+
+        if (choice == 0) {
+            printf("\nExiting HelixVault. Goodbye!\n\n");
+            break;
+        }
+
+        switch (choice) {
+            case 1: {
+                char bname[128];
+                printf("Enter Bucket Name (e.g. vit-bucket): ");
+                if (fgets(line, sizeof(line), stdin) && sscanf(line, "%127s", bname) == 1) {
+                    char *args[] = { bname };
+                    cmd_mb(s, 1, args);
+                }
+                break;
+            }
+            case 2: {
+                char bname[128];
+                printf("Enter Bucket Name to delete: ");
+                if (fgets(line, sizeof(line), stdin) && sscanf(line, "%127s", bname) == 1) {
+                    char *args[] = { bname };
+                    cmd_rb(s, 1, args);
+                }
+                break;
+            }
+            case 3:
+                cmd_lb(s);
+                break;
+            case 4: {
+                char bname[128], key[256], fpath[512];
+                printf("Enter Bucket Name: ");
+                if (!fgets(line, sizeof(line), stdin) || sscanf(line, "%127s", bname) != 1) break;
+                printf("Enter Object Key (e.g. Documents/notes.txt): ");
+                if (!fgets(line, sizeof(line), stdin) || sscanf(line, "%255s", key) != 1) break;
+                printf("Enter Local File Path to upload: ");
+                if (!fgets(line, sizeof(line), stdin) || sscanf(line, "%511s", fpath) != 1) break;
+                char *args[] = { bname, key, fpath };
+                cmd_put(s, 3, args);
+                break;
+            }
+            case 5: {
+                char bname[128], key[256], dst[512];
+                printf("Enter Bucket Name: ");
+                if (!fgets(line, sizeof(line), stdin) || sscanf(line, "%127s", bname) != 1) break;
+                printf("Enter Object Key to download: ");
+                if (!fgets(line, sizeof(line), stdin) || sscanf(line, "%255s", key) != 1) break;
+                printf("Enter Destination Path (e.g. out.txt): ");
+                if (!fgets(line, sizeof(line), stdin) || sscanf(line, "%511s", dst) != 1) break;
+                char *args[] = { bname, key, dst };
+                cmd_get(s, 3, args);
+                break;
+            }
+            case 6: {
+                char bname[128], key[256];
+                printf("Enter Bucket Name: ");
+                if (!fgets(line, sizeof(line), stdin) || sscanf(line, "%127s", bname) != 1) break;
+                printf("Enter Object Key to delete: ");
+                if (!fgets(line, sizeof(line), stdin) || sscanf(line, "%255s", key) != 1) break;
+                char *args[] = { bname, key };
+                cmd_del(s, 2, args);
+                break;
+            }
+            case 7: {
+                char bname[128];
+                printf("Enter Bucket Name to list: ");
+                if (fgets(line, sizeof(line), stdin) && sscanf(line, "%127s", bname) == 1) {
+                    char *args[] = { bname };
+                    cmd_ls(s, 1, args);
+                }
+                break;
+            }
+            case 8: {
+                char bname[128];
+                printf("Enter Bucket Name (press ENTER to view all buckets): ");
+                if (fgets(line, sizeof(line), stdin) && sscanf(line, "%127s", bname) == 1) {
+                    char *args[] = { bname };
+                    cmd_tree(s, 1, args);
+                } else {
+                    cmd_tree(s, 0, NULL);
+                }
+                break;
+            }
+            case 9: {
+                char bname[128], key[256];
+                printf("Enter Bucket Name: ");
+                if (!fgets(line, sizeof(line), stdin) || sscanf(line, "%127s", bname) != 1) break;
+                printf("Enter Object Key: ");
+                if (!fgets(line, sizeof(line), stdin) || sscanf(line, "%255s", key) != 1) break;
+                char *args[] = { bname, key };
+                cmd_info(s, 2, args);
+                break;
+            }
+            case 10:
+                cmd_gc(s);
+                break;
+            case 11:
+                cmd_stats(s);
+                break;
+            case 12:
+                run_selftest(root);
+                break;
+            case 13: {
+                char bname[128];
+                printf("Enter AWS S3 Bucket Name (press ENTER for default in config): ");
+                if (fgets(line, sizeof(line), stdin) && sscanf(line, "%127s", bname) == 1) {
+                    char *args[] = { bname };
+                    cmd_aws_sync(1, args);
+                } else {
+                    cmd_aws_sync(0, NULL);
+                }
+                break;
+            }
+            case 14:
+                cmd_aws_setup();
+                break;
+            case 15: {
+                char bname[128];
+                printf("Enter AWS S3 Bucket Name (press ENTER for default in config): ");
+                if (fgets(line, sizeof(line), stdin) && sscanf(line, "%127s", bname) == 1) {
+                    char *args[] = { bname };
+                    cmd_aws_list(1, args);
+                } else {
+                    cmd_aws_list(0, NULL);
+                }
+                break;
+            }
+            default:
+                printf("Invalid option. Please choose between 0 and 15.\n");
+                break;
+        }
+    }
 }
 
 /* -------------------------------------------------------------------------
@@ -321,22 +572,15 @@ int main(int argc, char **argv) {
     const char *root = getenv("HELIX_ROOT");
     if (!root) root = "./storage_root";
 
+    /* If no arguments passed, launch the Interactive Menu Mode directly! */
     if (argc < 2) {
-        printf("HelixVault — Local S3-Inspired Object Storage\n\n");
-        printf("Usage: %s <command> [args...]\n\n", argv[0]);
-        printf("Commands:\n");
-        printf("  mb  <bucket>                  Create bucket\n");
-        printf("  rb  <bucket>                  Delete bucket\n");
-        printf("  lb                            List buckets\n");
-        printf("  put <bucket> <key> <file>     Upload file\n");
-        printf("  get <bucket> <key> <dst>      Download object\n");
-        printf("  del <bucket> <key>            Delete object\n");
-        printf("  ls  <bucket>                  List objects\n");
-        printf("  info <bucket> <key>           Object metadata\n");
-        printf("  gc                            Garbage collect\n");
-        printf("  stats                         Pool statistics\n");
-        printf("  selftest                      Built-in test\n\n");
-        printf("Storage root: %s  (override: HELIX_ROOT=<path>)\n", root);
+        Store *store = store_open(root, NULL);
+        if (!store) {
+            fprintf(stderr, "Fatal: could not open storage at '%s'\n", root);
+            return 1;
+        }
+        run_interactive_menu(store, root);
+        store_close(store);
         return 0;
     }
 
@@ -356,18 +600,42 @@ int main(int argc, char **argv) {
     }
 
     int rc = 0;
-    if      (strcmp(cmd, "mb")    == 0) cmd_mb(store, argc - 2, argv + 2);
-    else if (strcmp(cmd, "rb")    == 0) cmd_rb(store, argc - 2, argv + 2);
-    else if (strcmp(cmd, "lb")    == 0) cmd_lb(store);
-    else if (strcmp(cmd, "put")   == 0) cmd_put(store, argc - 2, argv + 2);
-    else if (strcmp(cmd, "get")   == 0) cmd_get(store, argc - 2, argv + 2);
-    else if (strcmp(cmd, "del")   == 0) cmd_del(store, argc - 2, argv + 2);
-    else if (strcmp(cmd, "ls")    == 0) cmd_ls(store, argc - 2, argv + 2);
-    else if (strcmp(cmd, "info")  == 0) cmd_info(store, argc - 2, argv + 2);
-    else if (strcmp(cmd, "gc")    == 0) cmd_gc(store);
-    else if (strcmp(cmd, "stats") == 0) cmd_stats(store);
+    if      (strcmp(cmd, "menu")      == 0) run_interactive_menu(store, root);
+    else if (strcmp(cmd, "mb")        == 0) cmd_mb(store, argc - 2, argv + 2);
+    else if (strcmp(cmd, "rb")        == 0) cmd_rb(store, argc - 2, argv + 2);
+    else if (strcmp(cmd, "lb")        == 0) cmd_lb(store);
+    else if (strcmp(cmd, "put")       == 0) cmd_put(store, argc - 2, argv + 2);
+    else if (strcmp(cmd, "get")       == 0) cmd_get(store, argc - 2, argv + 2);
+    else if (strcmp(cmd, "del")       == 0) cmd_del(store, argc - 2, argv + 2);
+    else if (strcmp(cmd, "ls")        == 0) cmd_ls(store, argc - 2, argv + 2);
+    else if (strcmp(cmd, "tree")      == 0) cmd_tree(store, argc - 2, argv + 2);
+    else if (strcmp(cmd, "info")      == 0) cmd_info(store, argc - 2, argv + 2);
+    else if (strcmp(cmd, "gc")        == 0) cmd_gc(store);
+    else if (strcmp(cmd, "stats")     == 0) cmd_stats(store);
+    else if (strcmp(cmd, "sync")      == 0) cmd_aws_sync(argc - 2, argv + 2);
+    else if (strcmp(cmd, "aws-setup") == 0) cmd_aws_setup();
+    else if (strcmp(cmd, "aws-list")  == 0) cmd_aws_list(argc - 2, argv + 2);
     else {
-        fprintf(stderr, "Unknown command '%s'. Run without arguments for help.\n", cmd);
+        printf("HelixVault — Local S3-Inspired Object Storage\n\n");
+        printf("Usage: %s <command> [args...]\n\n", argv[0]);
+        printf("Commands:\n");
+        printf("  menu                          Launch Interactive Menu Mode\n");
+        printf("  mb   <bucket>                 Create bucket\n");
+        printf("  rb   <bucket>                 Delete bucket\n");
+        printf("  lb                            List buckets\n");
+        printf("  put  <bucket> <key> <file>    Upload file (deduplicated)\n");
+        printf("  get  <bucket> <key> <dst>     Download object\n");
+        printf("  del  <bucket> <key>           Delete object\n");
+        printf("  ls   <bucket>                 List objects\n");
+        printf("  tree [bucket]                 View File Hierarchy Tree (Trie)\n");
+        printf("  info <bucket> <key>           Object metadata\n");
+        printf("  gc                            Garbage collect\n");
+        printf("  stats                         Pool statistics\n");
+        printf("  sync [bucket]                 Sync deduplicated chunks to AWS S3\n");
+        printf("  aws-setup                     Configure AWS Cloud credentials\n");
+        printf("  aws-list [bucket]             List objects in AWS S3 Cloud Bucket\n");
+        printf("  selftest                      Built-in test\n\n");
+        printf("Storage root: %s  (override: HELIX_ROOT=<path>)\n", root);
         rc = 1;
     }
 

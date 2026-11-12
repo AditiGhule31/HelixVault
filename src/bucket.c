@@ -20,8 +20,12 @@
 #  define MKDIR(p)          _mkdir(p)
 #  define STAT_ST           struct _stat
 #  define STAT_FN           _stat
-#  define S_ISDIR(m)        (((m) & _S_IFMT) == _S_IFDIR)
-#  define S_ISREG(m)        (((m) & _S_IFMT) == _S_IFREG)
+#  ifndef S_ISDIR
+#    define S_ISDIR(m)      (((m) & _S_IFMT) == _S_IFDIR)
+#  endif
+#  ifndef S_ISREG
+#    define S_ISREG(m)      (((m) & _S_IFMT) == _S_IFREG)
+#  endif
 /* Portable directory scanning on Windows using _findfirst/_findnext. */
 #  include <windows.h>
 #else
@@ -645,8 +649,149 @@ int object_info(const Store *store, const char *bucket, const char *key,
 }
 
 /* -------------------------------------------------------------------------
- * Object LIST
+ * Object LIST (Recursive directory traversal to support nested folders)
  * ---------------------------------------------------------------------- */
+
+#ifdef _WIN32
+static int scan_manifests_recursive(const char *root_bucket_dir, const char *rel_sub_dir, ListResult *result) {
+    char search_path[2048];
+    if (rel_sub_dir && strlen(rel_sub_dir) > 0) {
+        snprintf(search_path, sizeof(search_path), "%s\\%s\\*", root_bucket_dir, rel_sub_dir);
+    } else {
+        snprintf(search_path, sizeof(search_path), "%s\\*", root_bucket_dir);
+    }
+
+    WIN32_FIND_DATAA fd;
+    HANDLE h = FindFirstFileA(search_path, &fd);
+    if (h == INVALID_HANDLE_VALUE) return 0;
+
+    size_t elen = strlen(MANIFEST_EXT);
+
+    do {
+        if (strcmp(fd.cFileName, ".") == 0 || strcmp(fd.cFileName, "..") == 0) continue;
+
+        if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+            char next_rel[1024];
+            if (rel_sub_dir && strlen(rel_sub_dir) > 0) {
+                snprintf(next_rel, sizeof(next_rel), "%s/%s", rel_sub_dir, fd.cFileName);
+            } else {
+                snprintf(next_rel, sizeof(next_rel), "%s", fd.cFileName);
+            }
+            scan_manifests_recursive(root_bucket_dir, next_rel, result);
+        } else {
+            size_t flen = strlen(fd.cFileName);
+            if (flen > elen && strcmp(fd.cFileName + flen - elen, MANIFEST_EXT) == 0) {
+                char base_name[512];
+                snprintf(base_name, sizeof(base_name), "%s", fd.cFileName);
+                base_name[flen - elen] = '\0';
+
+                char full_key[OBJECT_KEY_MAX + 1];
+                if (rel_sub_dir && strlen(rel_sub_dir) > 0) {
+                    snprintf(full_key, sizeof(full_key), "%s/%s", rel_sub_dir, base_name);
+                } else {
+                    snprintf(full_key, sizeof(full_key), "%s", base_name);
+                }
+
+                char mpath[2048];
+                if (rel_sub_dir && strlen(rel_sub_dir) > 0) {
+                    snprintf(mpath, sizeof(mpath), "%s\\%s\\%s", root_bucket_dir, rel_sub_dir, fd.cFileName);
+                } else {
+                    snprintf(mpath, sizeof(mpath), "%s\\%s", root_bucket_dir, fd.cFileName);
+                }
+
+                Manifest *m = manifest_read(mpath);
+                if (!m) continue;
+
+                if (result->count >= result->capacity) {
+                    size_t new_cap = result->capacity ? result->capacity * 2 : 8;
+                    ObjectInfo *ni = (ObjectInfo *)realloc(result->items, new_cap * sizeof(ObjectInfo));
+                    if (!ni) { manifest_free(m); FindClose(h); return -1; }
+                    result->items    = ni;
+                    result->capacity = new_cap;
+                }
+
+                ObjectInfo *info = &result->items[result->count++];
+                snprintf(info->key,          sizeof(info->key),          "%s", full_key);
+                snprintf(info->content_type, sizeof(info->content_type), "%s", m->header.content_type);
+                info->size       = m->header.object_size;
+                info->created_at = (time_t)m->header.created_at;
+
+                manifest_free(m);
+            }
+        }
+    } while (FindNextFileA(h, &fd));
+
+    FindClose(h);
+    return 0;
+}
+#else
+static int scan_manifests_recursive(const char *root_bucket_dir, const char *rel_sub_dir, ListResult *result) {
+    char dir_path[2048];
+    if (rel_sub_dir && strlen(rel_sub_dir) > 0) {
+        snprintf(dir_path, sizeof(dir_path), "%s/%s", root_bucket_dir, rel_sub_dir);
+    } else {
+        snprintf(dir_path, sizeof(dir_path), "%s", root_bucket_dir);
+    }
+
+    DIR *d = opendir(dir_path);
+    if (!d) return 0;
+
+    size_t elen = strlen(MANIFEST_EXT);
+    struct dirent *ent;
+    while ((ent = readdir(d)) != NULL) {
+        if (ent->d_name[0] == '.') continue;
+
+        char sub_full[2048];
+        snprintf(sub_full, sizeof(sub_full), "%s/%s", dir_path, ent->d_name);
+
+        STAT_ST st;
+        if (STAT_FN(sub_full, &st) == 0 && S_ISDIR(st.st_mode)) {
+            char next_rel[1024];
+            if (rel_sub_dir && strlen(rel_sub_dir) > 0) {
+                snprintf(next_rel, sizeof(next_rel), "%s/%s", rel_sub_dir, ent->d_name);
+            } else {
+                snprintf(next_rel, sizeof(next_rel), "%s", ent->d_name);
+            }
+            scan_manifests_recursive(root_bucket_dir, next_rel, result);
+        } else {
+            size_t nlen = strlen(ent->d_name);
+            if (nlen > elen && strcmp(ent->d_name + nlen - elen, MANIFEST_EXT) == 0) {
+                char base_name[512];
+                snprintf(base_name, sizeof(base_name), "%s", ent->d_name);
+                base_name[nlen - elen] = '\0';
+
+                char full_key[OBJECT_KEY_MAX + 1];
+                if (rel_sub_dir && strlen(rel_sub_dir) > 0) {
+                    snprintf(full_key, sizeof(full_key), "%s/%s", rel_sub_dir, base_name);
+                } else {
+                    snprintf(full_key, sizeof(full_key), "%s", base_name);
+                }
+
+                Manifest *m = manifest_read(sub_full);
+                if (!m) continue;
+
+                if (result->count >= result->capacity) {
+                    size_t new_cap = result->capacity ? result->capacity * 2 : 8;
+                    ObjectInfo *ni = (ObjectInfo *)realloc(result->items, new_cap * sizeof(ObjectInfo));
+                    if (!ni) { manifest_free(m); closedir(d); return -1; }
+                    result->items    = ni;
+                    result->capacity = new_cap;
+                }
+
+                ObjectInfo *info = &result->items[result->count++];
+                snprintf(info->key,          sizeof(info->key),          "%s", full_key);
+                snprintf(info->content_type, sizeof(info->content_type), "%s", m->header.content_type);
+                info->size       = m->header.object_size;
+                info->created_at = (time_t)m->header.created_at;
+
+                manifest_free(m);
+            }
+        }
+    }
+    closedir(d);
+    return 0;
+}
+#endif
 
 int object_list(const Store *store, const char *bucket, ListResult *result) {
     if (!store || !bucket || !result) return -1;
@@ -662,89 +807,32 @@ int object_list(const Store *store, const char *bucket, ListResult *result) {
         return -1;
     }
 
-#ifdef _WIN32
-    char pattern[2048];
-    snprintf(pattern, sizeof(pattern), "%s\\*" MANIFEST_EXT, bucket_dir);
-    WIN32_FIND_DATAA fd;
-    HANDLE h = FindFirstFileA(pattern, &fd);
-    if (h == INVALID_HANDLE_VALUE) return 0;
+    return scan_manifests_recursive(bucket_dir, "", result);
+}
 
-    do {
-        /* Strip the .manifest extension to recover the object key. */
-        char key_buf[OBJECT_KEY_MAX + 1];
-        snprintf(key_buf, sizeof(key_buf), "%s", fd.cFileName);
-        size_t klen = strlen(key_buf);
-        size_t elen = strlen(MANIFEST_EXT);
-        if (klen > elen) key_buf[klen - elen] = '\0';
-
-        /* Read the manifest. */
-        char mpath[2048];
-        snprintf(mpath, sizeof(mpath), "%s\\%s", bucket_dir, fd.cFileName);
-        Manifest *m = manifest_read(mpath);
-        if (!m) continue;
-
-        /* Grow the result array. */
-        if (result->count >= result->capacity) {
-            size_t new_cap = result->capacity ? result->capacity * 2 : 8;
-            ObjectInfo *ni = (ObjectInfo *)realloc(
-                result->items, new_cap * sizeof(ObjectInfo));
-            if (!ni) { manifest_free(m); FindClose(h); return -1; }
-            result->items    = ni;
-            result->capacity = new_cap;
-        }
-
-        ObjectInfo *info = &result->items[result->count++];
-        snprintf(info->key,          sizeof(info->key),          "%s", key_buf);
-        snprintf(info->content_type, sizeof(info->content_type),
-                 "%s", m->header.content_type);
-        info->size       = m->header.object_size;
-        info->created_at = (time_t)m->header.created_at;
-
-        manifest_free(m);
-    } while (FindNextFileA(h, &fd));
-    FindClose(h);
-
-#else
-    DIR *d = opendir(bucket_dir);
-    if (!d) return -1;
-
-    size_t ext_len = strlen(MANIFEST_EXT);
-    struct dirent *ent;
-    while ((ent = readdir(d)) != NULL) {
-        size_t nlen = strlen(ent->d_name);
-        if (nlen <= ext_len) continue;
-        if (strcmp(ent->d_name + nlen - ext_len, MANIFEST_EXT) != 0) continue;
-
-        char key_buf[OBJECT_KEY_MAX + 1];
-        snprintf(key_buf, sizeof(key_buf), "%s", ent->d_name);
-        key_buf[nlen - ext_len] = '\0';
-
-        char mpath[2048];
-        snprintf(mpath, sizeof(mpath), "%s/%s", bucket_dir, ent->d_name);
-        Manifest *m = manifest_read(mpath);
-        if (!m) continue;
-
-        if (result->count >= result->capacity) {
-            size_t new_cap = result->capacity ? result->capacity * 2 : 8;
-            ObjectInfo *ni = (ObjectInfo *)realloc(
-                result->items, new_cap * sizeof(ObjectInfo));
-            if (!ni) { manifest_free(m); closedir(d); return -1; }
-            result->items    = ni;
-            result->capacity = new_cap;
-        }
-
-        ObjectInfo *info = &result->items[result->count++];
-        snprintf(info->key,          sizeof(info->key),          "%s", key_buf);
-        snprintf(info->content_type, sizeof(info->content_type),
-                 "%s", m->header.content_type);
-        info->size       = m->header.object_size;
-        info->created_at = (time_t)m->header.created_at;
-
-        manifest_free(m);
+int bucket_tree_view(const Store *store, const char *bucket) {
+    if (!store || !bucket) return -1;
+    if (!bucket_exists(store, bucket)) {
+        fprintf(stderr, "Bucket '%s' does not exist.\n", bucket);
+        return -1;
     }
-    closedir(d);
-#endif
 
+    ListResult res;
+    if (object_list(store, bucket, &res) != 0) {
+        fprintf(stderr, "Error listing objects in bucket '%s'.\n", bucket);
+        return -1;
+    }
+
+    TreeNode *root = tree_node_create(bucket, false, 0, "bucket");
+    for (size_t i = 0; i < res.count; i++) {
+        tree_insert_path(root, res.items[i].key, res.items[i].size, res.items[i].content_type);
+    }
+
+    tree_display(root, bucket);
+    printf("  Summary: %zu object(s) in bucket '%s'\n\n", res.count, bucket);
+
+    tree_free(root);
+    list_result_free(&res);
     return 0;
 }
 

@@ -1,0 +1,7 @@
+{
+    "aws_access_key_id": "PASTE_YOUR_AWS_ACCESS_KEY_ID_HERE",
+    "aws_secret_access_key": "PASTE_YOUR_AWS_SECRET_ACCESS_KEY_HERE",
+    "aws_session_token": "",
+    "region_name": "ap-southeast-2",
+    "s3_bucket_name": "sahil-vit-group14-storage"
+}

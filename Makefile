@@ -39,7 +39,7 @@ LDFLAGS     :=
 ifeq ($(OS), Windows_NT)
   BINARY  := helixvault.exe
   LDFLAGS += -lkernel32
-  CFLAGS_BASE := $(filter-out -D_POSIX_C_SOURCE=200809L, $(CFLAGS_BASE))
+  CFLAGS_BASE := $(filter-out -D_POSIX_C_SOURCE=200809L, $(CFLAGS_BASE)) -D__USE_MINGW_ANSI_STDIO=1
   # MinGW does not need _POSIX_C_SOURCE; it uses Win32 APIs directly.
 endif
 

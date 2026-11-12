@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CloudStorage Manager | Mini AWS S3</title>
+  <meta name="description" content="A Cloud Storage Manager built with Data Structures - Hash Table, Trie, and Linked List deduplication engine." />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-primary: #050b18;
+      --bg-secondary: #0d1a2e;
+      --bg-card: rgba(13, 26, 46, 0.8);
+      --bg-glass: rgba(255,255,255,0.03);
+      --accent-cyan: #00d4ff;
+      --accent-blue: #4f8ef7;
+      --accent-purple: #a855f7;
+      --accent-green: #00ff9d;
+      --accent-orange: #ff6b35;
+      --text-primary: #e8f4fd;
+      --text-secondary: #7a9bb5;
+      --text-muted: #3d5a78;
+      --border: rgba(0, 212, 255, 0.12);
+      --border-hover: rgba(0, 212, 255, 0.4);
+      --glow-cyan: 0 0 20px rgba(0, 212, 255, 0.3);
+      --glow-purple: 0 0 20px rgba(168, 85, 247, 0.3);
+      --glow-green: 0 0 20px rgba(0, 255, 157, 0.3);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Animated background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 20% 20%, rgba(79, 142, 247, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 80%, rgba(168, 85, 247, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, rgba(0, 212, 255, 0.04) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container { position: relative; z-index: 1; max-width: 1400px; margin: 0 auto; padding: 0 24px; }
+
+    /* ===== HEADER ===== */
+    header {
+      padding: 20px 0;
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(20px);
+      background: rgba(5, 11, 24, 0.9);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      box-shadow: var(--glow-cyan);
+    }
+
+    .logo-text h1 {
+      font-size: 18px;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .logo-text span {
+      font-size: 11px;
+      color: var(--text-muted);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+
+    .header-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0, 212, 255, 0.08);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 6px 16px;
+      font-size: 12px;
+      color: var(--accent-cyan);
+    }
+
+    .status-dot {
+      width: 7px; height: 7px;
+      background: var(--accent-green);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0,255,157,0.4); }
+      50% { opacity: 0.8; box-shadow: 0 0 0 6px rgba(0,255,157,0); }
+    }
+
+    /* ===== STATS BAR ===== */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      padding: 28px 0;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px 24px;
+      backdrop-filter: blur(20px);
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .stat-card:hover::before { opacity: 1; }
+    .stat-card:hover { border-color: var(--border-hover); box-shadow: var(--glow-cyan); transform: translateY(-2px); }
+
+    .stat-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+    .stat-value { font-size: 32px; font-weight: 800; background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .stat-sub { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+
+    /* ===== MAIN GRID ===== */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      padding-bottom: 40px;
+    }
+
+    .full-width { grid-column: 1 / -1; }
+
+    /* ===== CARD ===== */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px;
+      backdrop-filter: blur(20px);
+      transition: border-color 0.3s;
+    }
+
+    .card:hover { border-color: rgba(0,212,255,0.2); }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .card-icon {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .card-icon.cyan { background: rgba(0, 212, 255, 0.1); }
+    .card-icon.purple { background: rgba(168, 85, 247, 0.1); }
+    .card-icon.green { background: rgba(0, 255, 157, 0.1); }
+
+    .card-title { font-size: 16px; font-weight: 600; }
+    .card-subtitle { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+    /* ===== FORM ===== */
+    .form-group { margin-bottom: 16px; }
+
+    .form-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 8px;
+    }
+
+    .form-input {
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      color: var(--text-primary);
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      transition: all 0.3s;
+      outline: none;
+    }
+
+    .form-input:focus {
+      border-color: var(--accent-cyan);
+      background: rgba(0, 212, 255, 0.04);
+      box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1);
+    }
+
+    .form-input::placeholder { color: var(--text-muted); }
+
+    textarea.form-input { resize: vertical; min-height: 100px; font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+
+    /* ===== BUTTON ===== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 13px 28px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.3s ease;
+      width: 100%;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(0, 212, 255, 0.25);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(0, 212, 255, 0.4);
+    }
+
+    .btn-primary:active { transform: translateY(0); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+
+    /* ===== TOAST ===== */
+    #toast-container {
+      position: fixed;
+      top: 80px;
+      right: 24px;
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .toast {
+      padding: 14px 20px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 500;
+      backdrop-filter: blur(20px);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 300px;
+      border: 1px solid;
+      animation: slideIn 0.3s ease;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    }
+
+    @keyframes slideIn {
+      from { transform: translateX(120%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    .toast.success { background: rgba(0,255,157,0.08); border-color: rgba(0,255,157,0.3); color: var(--accent-green); }
+    .toast.warning { background: rgba(255, 107, 53, 0.08); border-color: rgba(255,107,53,0.3); color: var(--accent-orange); }
+    .toast.error { background: rgba(255,60,60,0.08); border-color: rgba(255,60,60,0.3); color: #ff6060; }
+
+    /* ===== RESULT BOX ===== */
+    .result-box {
+      background: rgba(0,0,0,0.3);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 16px;
+      display: none;
+    }
+
+    .result-box.show { display: block; animation: fadeIn 0.4s ease; }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    .result-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+
+    .result-row:last-child { border-bottom: none; }
+    .result-key { color: var(--text-muted); }
+    .result-val { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--accent-cyan); }
+    .result-val.green { color: var(--accent-green); }
+    .result-val.orange { color: var(--accent-orange); }
+
+    /* ===== FILE LIST ===== */
+    .file-list { display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto; }
+
+    .file-item {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      transition: all 0.2s;
+    }
+
+    .file-item:hover { border-color: var(--border-hover); background: rgba(0,212,255,0.03); }
+
+    .file-item-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+
+    .file-hash { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent-cyan); background: rgba(0,212,255,0.08); padding: 3px 8px; border-radius: 6px; }
+
+    .file-badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 100px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    .badge-unique { background: rgba(0,255,157,0.1); color: var(--accent-green); border: 1px solid rgba(0,255,157,0.2); }
+    .badge-shared { background: rgba(255,107,53,0.1); color: var(--accent-orange); border: 1px solid rgba(255,107,53,0.2); }
+
+    .file-content { font-size: 12px; color: var(--text-secondary); font-family: 'JetBrains Mono', monospace; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .file-meta { display: flex; gap: 16px; flex-wrap: wrap; }
+    .file-meta-item { font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
+
+    /* ===== TRIE TREE ===== */
+    .tree-container { max-height: 400px; overflow-y: auto; }
+    .tree-node { padding-left: 20px; }
+    .tree-node-root { padding-left: 0; }
+    .tree-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0;
+      font-size: 13px;
+      cursor: default;
+    }
+
+    .tree-connector { color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+    .tree-folder { color: var(--accent-blue); }
+    .tree-file { color: var(--accent-green); }
+    .tree-hash { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-muted); background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; }
+
+    /* ===== EMPTY STATE ===== */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-muted);
+    }
+
+    .empty-state .icon { font-size: 40px; margin-bottom: 12px; opacity: 0.5; }
+    .empty-state p { font-size: 13px; }
+
+    /* ===== DS INFO ===== */
+    .ds-badges { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+    .ds-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-radius: 10px;
+      border: 1px solid;
+      font-size: 12px;
+      font-weight: 500;
+      flex: 1;
+      min-width: 140px;
+    }
+
+    .ds-badge.hash { background: rgba(0,212,255,0.06); border-color: rgba(0,212,255,0.2); color: var(--accent-cyan); }
+    .ds-badge.trie { background: rgba(168,85,247,0.06); border-color: rgba(168,85,247,0.2); color: var(--accent-purple); }
+    .ds-badge.list { background: rgba(0,255,157,0.06); border-color: rgba(0,255,157,0.2); color: var(--accent-green); }
+
+    /* ===== SCROLLBAR ===== */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.2); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(0,212,255,0.4); }
+
+    /* Loading spinner */
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: inline-block;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 768px) {
+      .main-grid { grid-template-columns: 1fr; }
+      .stats-bar { grid-template-columns: 1fr; }
+      .full-width { grid-column: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Toast container -->
+  <div id="toast-container"></div>
+
+  <header>
+    <div class="container">
+      <div class="header-inner">
+        <div class="logo">
+          <div class="logo-icon">☁️</div>
+          <div class="logo-text">
+            <h1>CloudStorage Manager</h1>
+            <span>Mini AWS S3 — DS Course Project</span>
+          </div>
+        </div>
+        <div class="header-badge">
+          <div class="status-dot"></div>
+          Server Online
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- Stats -->
+    <div class="stats-bar">
+      <div class="stat-card">
+        <div class="stat-label">Unique Files on Disk</div>
+        <div class="stat-value" id="stat-unique">0</div>
+        <div class="stat-sub">Stored in Hash Table</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Space Saved</div>
+        <div class="stat-value" id="stat-saved">0 B</div>
+        <div class="stat-sub">via Deduplication</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Dedup Ratio</div>
+        <div class="stat-value" id="stat-ratio">0%</div>
+        <div class="stat-sub">Storage efficiency</div>
+      </div>
+    </div>
+
+    <!-- Data Structures Used -->
+    <div class="card full-width" style="margin-bottom:20px">
+      <div class="card-header">
+        <div class="card-icon cyan">🧠</div>
+        <div>
+          <div class="card-title">Data Structures Used</div>
+          <div class="card-subtitle">The engine powering this storage system</div>
+        </div>
+      </div>
+      <div class="ds-badges">
+        <div class="ds-badge hash">🗂️ Hash Table — Deduplication & O(1) Lookup</div>
+        <div class="ds-badge trie">🌲 Trie — File System Hierarchy</div>
+        <div class="ds-badge list">🔗 Linked List — Owner Metadata & Collision Chaining</div>
+      </div>
+    </div>
+
+    <div class="main-grid">
+      <!-- Upload Form -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon cyan">📤</div>
+          <div>
+            <div class="card-title">Upload File</div>
+            <div class="card-subtitle">Deduplication runs automatically</div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="input-user">Username</label>
+          <input class="form-input" type="text" id="input-user" placeholder="e.g. alice" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="input-path">File Path</label>
+          <input class="form-input" type="text" id="input-path" placeholder="e.g. alice/photos/pic.png" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="input-content">File Content</label>
+          <textarea class="form-input" id="input-content" placeholder="Type or paste file content here..."></textarea>
+        </div>
+
+        <button class="btn btn-primary" id="btn-upload" onclick="uploadFile()">
+          <span>☁️</span> Upload to Cloud
+        </button>
+
+        <div class="result-box" id="upload-result">
+          <div class="result-row">
+            <span class="result-key">Status</span>
+            <span class="result-val green" id="res-status">—</span>
+          </div>
+          <div class="result-row">
+            <span class="result-key">Deduplication</span>
+            <span class="result-val" id="res-dedup">—</span>
+          </div>
+          <div class="result-row">
+            <span class="result-key">File Hash (djb2)</span>
+            <span class="result-val" id="res-hash">—</span>
+          </div>
+          <div class="result-row">
+            <span class="result-key">Space Saved (total)</span>
+            <span class="result-val green" id="res-saved">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- File System Hierarchy (Trie) -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon purple">🌲</div>
+          <div>
+            <div class="card-title">File System Hierarchy</div>
+            <div class="card-subtitle">Trie structure visualization</div>
+          </div>
+        </div>
+        <div class="tree-container" id="trie-container">
+          <div class="empty-state">
+            <div class="icon">🌲</div>
+            <p>Upload files to see the hierarchy</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Storage Blocks -->
+      <div class="card full-width">
+        <div class="card-header">
+          <div class="card-icon green">💾</div>
+          <div>
+            <div class="card-title">Storage Blocks (Hash Table)</div>
+            <div class="card-subtitle">All unique files stored on disk</div>
+          </div>
+        </div>
+        <div class="file-list" id="file-list">
+          <div class="empty-state">
+            <div class="icon">💾</div>
+            <p>No files uploaded yet</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function fetchStats() {
+      try {
+        const res = await fetch('/api/stats');
+        const data = await res.json();
+        document.getElementById('stat-unique').textContent = data.uniqueFiles;
+        document.getElementById('stat-saved').textContent = formatBytes(data.totalSpaceSaved);
+        document.getElementById('stat-ratio').textContent = data.deduplicationRatio + '%';
+      } catch(e) {}
+    }
+
+    async function fetchFiles() {
+      try {
+        const res = await fetch('/api/files');
+        const files = await res.json();
+        const container = document.getElementById('file-list');
+        if (!files.length) {
+          container.innerHTML = '<div class="empty-state"><div class="icon">💾</div><p>No files uploaded yet</p></div>';
+          return;
+        }
+        container.innerHTML = files.map(f => `
+          <div class="file-item">
+            <div class="file-item-top">
+              <span class="file-hash">${f.hash.substring(0,16)}...</span>
+              <span class="file-badge ${f.refCount > 1 ? 'badge-shared' : 'badge-unique'}">${f.refCount > 1 ? `${f.refCount}x Shared` : 'Unique'}</span>
+            </div>
+            <div class="file-content">${escapeHtml(f.content)}${f.content.length >= 100 ? '...' : ''}</div>
+            <div class="file-meta">
+              <span class="file-meta-item">📦 ${formatBytes(f.size)}</span>
+              <span class="file-meta-item">👥 ${f.owners.join(', ')}</span>
+              <span class="file-meta-item">🔢 RefCount: ${f.refCount}</span>
+            </div>
+          </div>
+        `).join('');
+      } catch(e) {}
+    }
+
+    async function fetchTrie() {
+      try {
+        const res = await fetch('/api/trie');
+        const tree = await res.json();
+        const container = document.getElementById('trie-container');
+        if (!tree.children || tree.children.length === 0) {
+          container.innerHTML = '<div class="empty-state"><div class="icon">🌲</div><p>Upload files to see the hierarchy</p></div>';
+          return;
+        }
+        container.innerHTML = renderTree(tree, true);
+      } catch(e) {}
+    }
+
+    function renderTree(node, isRoot = false) {
+      const childrenHtml = node.children.map(child => {
+        const isFile = child.isFile;
+        const childrenOfChild = renderTree(child);
+        return `
+          <div class="tree-node">
+            <div class="tree-item">
+              <span class="tree-connector">|--</span>
+              <span class="${isFile ? 'tree-file' : 'tree-folder'}">${isFile ? '📄' : '📁'} ${child.name}</span>
+              ${isFile ? `<span class="tree-hash">#${child.fileHash ? child.fileHash.substring(0,10) : ''}...</span>` : ''}
+            </div>
+            ${childrenOfChild}
+          </div>
+        `;
+      }).join('');
+
+      return `
+        <div class="${isRoot ? 'tree-node-root' : 'tree-node'}">
+          ${isRoot ? '<div class="tree-item"><span style="color:var(--accent-cyan);font-weight:600">🌐 root</span></div>' : ''}
+          ${childrenHtml}
+        </div>
+      `;
+    }
+
+    async function uploadFile() {
+      const user = document.getElementById('input-user').value.trim();
+      const filePath = document.getElementById('input-path').value.trim();
+      const content = document.getElementById('input-content').value.trim();
+
+      if (!user || !filePath || !content) {
+        showToast('⚠️ Please fill in all fields!', 'warning');
+        return;
+      }
+
+      const btn = document.getElementById('btn-upload');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Uploading...';
+
+      try {
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user, filePath, content })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          document.getElementById('res-status').textContent = '✅ Uploaded Successfully';
+          document.getElementById('res-dedup').textContent = data.isDuplicate ? '⚡ TRIGGERED — Duplicate detected!' : '🆕 New unique file stored';
+          document.getElementById('res-dedup').className = 'result-val ' + (data.isDuplicate ? 'orange' : 'green');
+          document.getElementById('res-hash').textContent = data.hash.substring(0, 20) + '...';
+          document.getElementById('res-saved').textContent = formatBytes(data.spaceSaved);
+          document.getElementById('upload-result').classList.add('show');
+
+          showToast(data.isDuplicate ? '⚡ Deduplication triggered! Space saved!' : '✅ New file uploaded successfully!', data.isDuplicate ? 'warning' : 'success');
+          
+          await Promise.all([fetchStats(), fetchFiles(), fetchTrie()]);
+          
+          document.getElementById('input-content').value = '';
+        }
+      } catch(e) {
+        showToast('❌ Upload failed. Server error.', 'error');
+      }
+
+      btn.disabled = false;
+      btn.innerHTML = '<span>☁️</span> Upload to Cloud';
+    }
+
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = message;
+      container.appendChild(toast);
+      setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateX(120%)'; toast.style.transition = '0.3s'; setTimeout(() => toast.remove(), 300); }, 3500);
+    }
+
+    function formatBytes(bytes) {
+      if (bytes === 0) return '0 B';
+      if (bytes < 1024) return bytes + ' B';
+      return (bytes / 1024).toFixed(1) + ' KB';
+    }
+
+    function escapeHtml(text) {
+      return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // Initial load
+    fetchStats();
+    fetchFiles();
+    fetchTrie();
+  </script>
+</body>
+</html>

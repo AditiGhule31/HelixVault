@@ -215,11 +215,19 @@ static int idx_load(StoragePool *pool, const char *path) {
         return -1;
     }
 
+    pool->total_bytes = 0;
     for (uint32_t i = 0; i < hdr.count; i++) {
         ChunkRef *ref = (ChunkRef *)arena_alloc(pool->meta_arena, sizeof(ChunkRef));
         if (!ref) { free(entries); return -1; }
         *ref = entries[i];
         ht_insert(pool->refcount_ht, ref->hex, ref);
+
+        char cpath[2048];
+        storage_chunk_path(pool, ref->hex, cpath, sizeof(cpath));
+        STAT_ST st;
+        if (STAT_FN(cpath, &st) == 0) {
+            pool->total_bytes += (size_t)st.st_size;
+        }
     }
 
     pool->total_chunks = hdr.count;
