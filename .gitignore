@@ -19,7 +19,10 @@ storage_root/
 # Temporary & Backup files
 main_old_backup.c
 
-# IDE & OS files
+# Benchmark & Test Outputs
+benchmark_data/
+benchmark_restored/
+
 .vscode/
 .idea/
 Thumbs.db
