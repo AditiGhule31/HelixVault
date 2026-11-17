@@ -1,37 +1,97 @@
-# HelixVault
+# HelixVault — AWS S3-Inspired Deduplicating Object Storage
 
-> A local, high-performance, S3-inspired object storage backend in pure C (C99/C11)  
-> featuring Content-Defined Chunking, logical file manifests, a physical chunk pool,  
-> and reference-counted garbage collection.
+> **Department of Information Technology, Vishwakarma Institute of Technology (VIT), Pune**  
+> **Course:** Data Structures Course Project (MSE Review)  
+> **Group 14:** Kunal Honde (62), Sahil Godage (54), Aditya Gavane (48), Shivam Gunjal (57), Aditi Ghule (51)  
+> 
+> A high-performance, S3-inspired hybrid cloud object storage backend in pure C (C11) featuring Content-Defined Chunking (FastCDC), SHA-256 cryptographic addressing, N-ary Directory Hierarchy Trees (Trie DSA), Reference-Counted Garbage Collection, and Real AWS S3 Cloud Synchronization.
 
 ---
 
-## Architecture
+## Key Data Structures & System Architecture
 
 ```
 helixvault/
-├── include/          Header files (public API)
-│   ├── arena.h       Memory pool / arena allocator
-│   ├── hashtable.h   Generic open-addressing hash table (FNV-1a)
-│   ├── sha256.h      Portable SHA-256 (FIPS 180-4, no dependencies)
-│   ├── chunker.h     Content-defined chunking via Rabin/Gear fingerprint
-│   ├── storage.h     Physical chunk pool (dedup + WAL + GC)
-│   ├── manifest.h    Object manifest (binary, CRC-32 validated)
-│   └── bucket.h      Bucket + object operations (PUT/GET/DELETE/LIST)
+├── include/              Header files (Public API)
+│   ├── arena.h           Memory pool / slab-chain bump allocator
+│   ├── hashtable.h       Open-addressing hash table (linear probing)
+│   ├── sha256.h          Portable cryptographic SHA-256 (FIPS 180-4)
+│   ├── chunker.h         Content-defined chunking via Gear fingerprinting
+│   ├── tree.h            N-ary Directory Hierarchy Tree (First-Child / Next-Sibling Trie)
+│   ├── storage.h         Physical chunk pool (dedup + WAL + refcounts + GC)
+│   ├── manifest.h        Object manifest (binary, CRC-32 validated)
+│   └── bucket.h          Bucket + object operations (PUT/GET/DEL/TREE/STATS)
 │
-├── src/              Implementation files
+├── src/                  C11 Implementation files
 │   ├── arena.c
 │   ├── hashtable.c
 │   ├── sha256.c
 │   ├── chunker.c
+│   ├── tree.c            Directory tree parsing, tokenization & ASCII rendering
 │   ├── storage.c
 │   ├── manifest.c
 │   ├── bucket.c
-│   └── main.c        CLI entry point
+│   └── main.c            Interactive 9-step menu & 1-click viva demo harness
 │
-├── Makefile          GCC/MinGW build (Linux/macOS/MSYS2)
-├── build_msvc.bat    MSVC build script (Developer Command Prompt)
-└── README.md         This file
+├── aws_sync.py           Real AWS S3 Cloud Synchronization (Boto3 SDK)
+├── full_scale_test.py    Automated 7-stage benchmark & system verification suite
+├── Makefile              MinGW / GCC build script
+├── build_msvc.bat        MSVC compiler build script
+└── README.md             System architecture & presentation documentation
+```
+
+---
+
+## ⚡ 1-Click Interactive Viva Demonstration
+
+To launch the interactive menu, simply run without arguments:
+```powershell
+.\helixvault.exe
+```
+
+### Menu Options (0 - 9)
+```text
+=================================================================
+  HELIXVAULT: AWS S3-INSPIRED OBJECT STORAGE WITH DEDUPLICATION  
+  Data Structures Course Project — Group 14 (VIT Pune)           
+=================================================================
+  [ 1 ] ⚡ 1-Click Complete Live Viva Demo (All Steps in One Go!)
+  [ 2 ] 📤 Upload Original File (First Upload -> New Chunk Created)
+  [ 3 ] 🔄 Upload Duplicate File (CDC Deduplication -> Zero New Chunks)
+  [ 4 ] 📁 View Directory Hierarchy (N-ary Tree / Trie DSA)
+  [ 5 ] 📊 View Storage & Cloud Cost Savings Analytics
+  [ 6 ] ☁️ Sync to Real AWS S3 Cloud (Sydney Region)
+  [ 7 ] 🌐 List Live Objects in AWS Cloud Bucket
+  [ 8 ] 🗑️ Delete Object & Run Garbage Collection (Refcount Test)
+  [ 9 ] 🔍 Lossless Integrity Check (SHA-256 Bit-by-Bit Verification)
+  [ 0 ] ❌ Exit
+=================================================================
+```
+
+Press **`1`** to automatically execute the complete end-to-end lifecycle:
+1. Bucket Creation (`vit-demo`)
+2. Initial Upload of `Documents/report.txt`
+3. Duplicate Upload of `Archive/backup_report.txt` (Zero new chunks written)
+4. Rendering the N-ary Directory Tree
+5. Computing Deduplication & AWS Cloud Bill Reduction (~60% savings)
+6. Synchronizing unique deduplicated chunks to Live AWS S3 Cloud (`sahil-vit-group14-storage`)!
+
+---
+
+## ☁️ Real AWS S3 Cloud Integration
+
+HelixVault features a true hybrid cloud architecture:
+- Deduplication runs locally on the client or storage node.
+- Only **unique physical chunks** (`chunks/xx/xxxx...`) and metadata manifests are transmitted across the wire to the AWS S3 cloud.
+- Drastically reduces AWS S3 Storage and Ingress/Egress bandwidth bills by ~60%.
+
+To test live AWS connection:
+```powershell
+python aws_sync.py test
+```
+To list live AWS S3 bucket contents:
+```powershell
+python aws_sync.py list
 ```
 
 ### On-Disk Layout
