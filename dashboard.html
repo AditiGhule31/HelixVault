@@ -3,183 +3,285 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>HelixVault — S3-Inspired Deduplicating Cloud Storage</title>
+  <title>Amazon S3 — HelixVault Deduplicating Cloud Console</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg: #0b0f19;
-      --surface: #111827;
-      --surface-2: #161f33;
-      --border: #24304a;
-      --text: #f3f4f6;
-      --muted: #94a3b8;
-      --accent: #38bdf8;
-      --accent-2: #818cf8;
-      --green: #10b981;
-      --amber: #f59e0b;
-      --red: #ef4444;
-      --aws: #ff9900;
+      /* Authentic AWS Cloudscape Design Tokens */
+      --aws-nav-bg: #161e2d;
+      --aws-nav-hover: #232f3e;
+      --aws-orange: #ff9900;
+      --aws-btn-orange: #ec7211;
+      --aws-btn-orange-hover: #dd6b10;
+      --aws-blue: #0972d3;
+      --aws-blue-hover: #033160;
+      --aws-bg: #f2f3f3;
+      --aws-card: #ffffff;
+      --aws-border: #d5dbdb;
+      --aws-text: #16191f;
+      --aws-muted: #545b64;
+      --aws-green: #037f0c;
+      --aws-green-bg: #f2f8f0;
+      --aws-green-border: #037f0c;
+      --aws-warn: #8d6605;
+      --aws-warn-bg: #fffce9;
+      --aws-warn-border: #f59e0b;
+      --aws-red: #d91515;
+      --aws-red-bg: #fff7f7;
+      --aws-table-head: #fafafa;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: radial-gradient(circle at 15% 0%, #172554 0%, var(--bg) 42%);
-      color: var(--text);
+      font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--aws-bg);
+      color: var(--aws-text);
       min-height: 100vh;
-      padding: 20px 28px 40px;
+      font-size: 14px;
     }
 
-    .container {
-      max-width: 1380px;
-      margin: 0 auto;
+    /* AWS TOP NAVIGATION BAR */
+    .aws-topbar {
+      background-color: var(--aws-nav-bg);
+      color: #ffffff;
+      height: 52px;
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #2b384c;
+      position: sticky;
+      top: 0;
+      z-index: 100;
     }
 
-    /* Header */
-    header {
+    .aws-left {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .aws-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: #ffffff;
+    }
+
+    .aws-logo-svg {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      line-height: 1;
+    }
+
+    .aws-wordmark {
+      font-weight: 800;
+      font-size: 19px;
+      letter-spacing: -0.5px;
+      color: #ffffff;
+    }
+
+    .aws-smile {
+      width: 44px;
+      height: 11px;
+      margin-top: -1px;
+    }
+
+    .aws-divider {
+      width: 1px;
+      height: 24px;
+      background: #3d4f69;
+    }
+
+    .aws-service-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: #f2f3f3;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .s3-icon {
+      width: 24px;
+      height: 24px;
+      background: #3f8624;
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .aws-search-pill {
+      background: #0f141e;
+      border: 1px solid #414d5c;
+      border-radius: 6px;
+      padding: 5px 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: #d5dbdb;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .aws-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 12.5px;
+    }
+
+    .aws-region {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #d5dbdb;
+      font-weight: 500;
+    }
+
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #1ec760;
+      box-shadow: 0 0 6px #1ec760;
+    }
+
+    .aws-account {
+      text-align: right;
+      line-height: 1.25;
+      border-left: 1px solid #3d4f69;
+      padding-left: 14px;
+    }
+
+    .aws-account-org {
+      font-weight: 700;
+      color: #ffffff;
+      font-size: 12.5px;
+    }
+
+    .aws-account-user {
+      color: #aab7b8;
+      font-size: 11.5px;
+    }
+
+    /* BREADCRUMB & PAGE HEADER */
+    .subbar {
+      background: #ffffff;
+      border-bottom: 1px solid var(--aws-border);
+      padding: 12px 28px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       flex-wrap: wrap;
-      gap: 16px;
-      padding: 18px 24px;
-      background: rgba(17, 24, 39, 0.85);
-      backdrop-filter: blur(12px);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      margin-bottom: 22px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      gap: 12px;
     }
 
-    .brand {
+    .breadcrumb {
+      font-size: 13px;
+      color: var(--aws-muted);
       display: flex;
       align-items: center;
+      gap: 8px;
+    }
+
+    .breadcrumb a {
+      color: var(--aws-blue);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .breadcrumb strong {
+      color: var(--aws-text);
+      font-weight: 700;
+    }
+
+    /* MAIN CONTAINER */
+    .container {
+      max-width: 1360px;
+      margin: 0 auto;
+      padding: 20px 28px 40px;
+    }
+
+    .page-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      flex-wrap: wrap;
       gap: 14px;
+      margin-bottom: 18px;
     }
 
-    .logo-badge {
-      width: 46px;
-      height: 46px;
-      border-radius: 12px;
-      background: linear-gradient(135deg, var(--accent), var(--accent-2));
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 800;
-      font-size: 20px;
-      color: #0b0f19;
-      box-shadow: 0 0 20px rgba(56, 189, 248, 0.35);
-    }
-
-    .brand h1 {
-      font-size: 21px;
-      font-weight: 800;
+    .page-title-row h1 {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--aws-text);
       letter-spacing: -0.02em;
     }
 
-    .brand p {
-      font-size: 12.5px;
-      color: var(--muted);
-      margin-top: 2px;
+    .page-title-row p {
+      font-size: 13px;
+      color: var(--aws-muted);
+      margin-top: 3px;
     }
 
-    .header-badges {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 7px 14px;
-      border-radius: 999px;
-      font-size: 12.5px;
-      font-weight: 600;
-      border: 1px solid var(--border);
-      background: var(--surface-2);
-    }
-
-    .pill-aws {
-      border-color: rgba(255, 153, 0, 0.45);
-      background: rgba(255, 153, 0, 0.1);
-      color: #ffb84d;
-    }
-
-    .dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--green);
-      box-shadow: 0 0 8px var(--green);
-      animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.5; transform: scale(1.25); }
-    }
-
-    /* KPI Row */
+    /* KPI METRICS CARDS (AWS Cloudscape Style) */
     .kpi-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 16px;
-      margin-bottom: 22px;
+      margin-bottom: 20px;
     }
 
-    @media (max-width: 980px) {
+    @media (max-width: 960px) {
       .kpi-grid { grid-template-columns: repeat(2, 1fr); }
     }
 
     .kpi-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 18px 20px;
-      position: relative;
-      overflow: hidden;
-      transition: transform 0.2s, border-color 0.2s;
-    }
-
-    .kpi-card:hover {
-      transform: translateY(-2px);
-      border-color: #364970;
+      background: var(--aws-card);
+      border: 1px solid var(--aws-border);
+      border-radius: 8px;
+      padding: 16px 18px;
+      box-shadow: 0 1px 2px rgba(0, 28, 36, 0.08);
     }
 
     .kpi-label {
       font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--muted);
       font-weight: 600;
+      color: var(--aws-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
     }
 
     .kpi-value {
-      font-size: 28px;
-      font-weight: 800;
-      margin-top: 8px;
-      letter-spacing: -0.02em;
-    }
-
-    .kpi-sub {
-      font-size: 12.5px;
-      color: var(--muted);
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--aws-text);
       margin-top: 6px;
     }
 
-    .kpi-green .kpi-value { color: var(--green); }
-    .kpi-cyan .kpi-value { color: var(--accent); }
-    .kpi-amber .kpi-value { color: #fbbf24; }
+    .kpi-sub {
+      font-size: 12px;
+      color: var(--aws-muted);
+      margin-top: 4px;
+    }
+
+    .kpi-green .kpi-value { color: var(--aws-green); }
+    .kpi-blue .kpi-value { color: var(--aws-blue); }
+    .kpi-orange .kpi-value { color: #b85600; }
 
     .progress-bar {
-      height: 7px;
-      background: #1e293b;
-      border-radius: 999px;
+      height: 8px;
+      background: #e9ebed;
+      border-radius: 4px;
       margin-top: 10px;
       overflow: hidden;
     }
@@ -187,17 +289,16 @@
     .progress-fill {
       height: 100%;
       width: 0%;
-      background: linear-gradient(90deg, var(--accent), var(--green));
-      border-radius: 999px;
-      transition: width 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+      background: linear-gradient(90deg, var(--aws-orange), var(--aws-green));
+      transition: width 0.6s ease;
     }
 
-    /* Main Grid */
+    /* CARDS & LAYOUT */
     .main-grid {
       display: grid;
       grid-template-columns: 1fr 1.25fr;
       gap: 20px;
-      margin-bottom: 22px;
+      margin-bottom: 20px;
     }
 
     @media (max-width: 1020px) {
@@ -205,264 +306,278 @@
     }
 
     .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 20px 22px;
+      background: var(--aws-card);
+      border: 1px solid var(--aws-border);
+      border-radius: 8px;
+      box-shadow: 0 1px 2px rgba(0, 28, 36, 0.08);
+      overflow: hidden;
       display: flex;
       flex-direction: column;
     }
 
     .card-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid #eaeded;
+      background: #fafafa;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 16px;
-      gap: 12px;
       flex-wrap: wrap;
+      gap: 10px;
     }
 
     .card-title {
-      font-size: 15.5px;
+      font-size: 16px;
       font-weight: 700;
+      color: var(--aws-text);
       display: flex;
       align-items: center;
       gap: 8px;
+    }
+
+    .card-body {
+      padding: 18px 20px;
     }
 
     .tag {
       font-size: 11px;
       font-weight: 600;
-      padding: 3px 9px;
-      border-radius: 6px;
-      background: rgba(56, 189, 248, 0.14);
-      color: var(--accent);
-      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: #f2f8fd;
+      color: var(--aws-blue);
+      border: 1px solid #a8d1f7;
     }
 
     .tag-aws {
-      background: rgba(255, 153, 0, 0.14);
-      color: #ffb84d;
-      border-color: rgba(255, 153, 0, 0.35);
+      background: #fff7eb;
+      color: #b85600;
+      border-color: #ffca80;
     }
 
-    /* Form Controls */
-    .form-group {
-      margin-bottom: 14px;
-    }
+    /* FORM CONTROLS */
+    .form-group { margin-bottom: 14px; }
 
     label {
       display: block;
-      font-size: 12.5px;
+      font-size: 13px;
       font-weight: 600;
-      color: #cbd5e1;
-      margin-bottom: 6px;
+      color: var(--aws-text);
+      margin-bottom: 5px;
+    }
+
+    .field-hint {
+      font-size: 11.5px;
+      color: var(--aws-muted);
+      margin-top: 3px;
     }
 
     input[type="text"], select {
       width: 100%;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 10px 13px;
-      border-radius: 10px;
+      background: #ffffff;
+      border: 1px solid #879596;
+      color: var(--aws-text);
+      padding: 8px 11px;
+      border-radius: 6px;
       font-size: 13.5px;
       font-family: inherit;
       outline: none;
-      transition: border-color 0.2s;
     }
 
     input[type="text"]:focus, select:focus {
-      border-color: var(--accent);
+      border-color: var(--aws-blue);
+      box-shadow: 0 0 0 2px rgba(9, 114, 211, 0.2);
     }
 
-    .row-inline {
-      display: flex;
-      gap: 8px;
-    }
+    .row-inline { display: flex; gap: 8px; align-items: center; }
 
-    /* Dropzone */
+    /* DROPZONE */
     .dropzone {
-      border: 2px dashed #334155;
-      border-radius: 14px;
-      padding: 26px 18px;
+      border: 2px dashed #aab7b8;
+      border-radius: 8px;
+      padding: 24px 16px;
       text-align: center;
-      background: rgba(11, 15, 25, 0.6);
+      background: #fafbfc;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.15s;
       margin-bottom: 14px;
     }
 
     .dropzone:hover, .dropzone.dragover {
-      border-color: var(--accent);
-      background: rgba(56, 189, 248, 0.06);
+      border-color: var(--aws-blue);
+      background: #f2f8fd;
     }
 
-    .dropzone-icon {
-      font-size: 32px;
-      margin-bottom: 6px;
-    }
-
-    .dropzone-text {
-      font-size: 13.5px;
+    .dropzone-title {
+      font-size: 14px;
       font-weight: 600;
-      color: #e2e8f0;
+      color: var(--aws-blue);
+      margin-top: 6px;
     }
 
     .dropzone-sub {
       font-size: 12px;
-      color: var(--muted);
+      color: var(--aws-muted);
       margin-top: 4px;
     }
 
-    /* Buttons */
+    /* AWS BUTTONS */
     .btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      padding: 10px 16px;
-      border-radius: 10px;
-      font-size: 13.5px;
-      font-weight: 600;
-      cursor: pointer;
-      border: none;
-      transition: all 0.18s;
-      font-family: inherit;
-    }
-
-    .btn:disabled {
-      opacity: 0.55;
-      cursor: not-allowed;
-    }
-
-    .btn-primary {
-      background: linear-gradient(135deg, #0ea5e9, #6366f1);
-      color: white;
-      width: 100%;
-      padding: 12px;
-      font-size: 14px;
-      box-shadow: 0 6px 18px rgba(14, 165, 233, 0.25);
-    }
-
-    .btn-primary:hover:not(:disabled) {
-      filter: brightness(1.1);
-      transform: translateY(-1px);
-    }
-
-    .btn-aws {
-      background: linear-gradient(135deg, #f59e0b, #ea580c);
-      color: #0b0f19;
+      gap: 7px;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 13px;
       font-weight: 700;
-      box-shadow: 0 6px 18px rgba(245, 158, 11, 0.25);
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.15s;
+      font-family: inherit;
+      text-decoration: none;
     }
 
-    .btn-aws:hover:not(:disabled) {
-      filter: brightness(1.1);
-      transform: translateY(-1px);
+    .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    .btn-aws-orange {
+      background: var(--aws-btn-orange);
+      color: #ffffff;
+      border-color: var(--aws-btn-orange);
     }
 
-    .btn-secondary {
-      background: var(--surface-2);
-      color: var(--text);
-      border: 1px solid var(--border);
+    .btn-aws-orange:hover:not(:disabled) {
+      background: var(--aws-btn-orange-hover);
     }
 
-    .btn-secondary:hover:not(:disabled) {
-      border-color: var(--accent);
+    .btn-aws-primary-full {
+      background: var(--aws-btn-orange);
+      color: #ffffff;
+      width: 100%;
+      padding: 10px 16px;
+      font-size: 14px;
+    }
+
+    .btn-aws-primary-full:hover:not(:disabled) {
+      background: var(--aws-btn-orange-hover);
+    }
+
+    .btn-aws-secondary {
+      background: #ffffff;
+      color: var(--aws-text);
+      border: 1px solid #545b64;
+    }
+
+    .btn-aws-secondary:hover:not(:disabled) {
+      background: #f2f3f3;
+      border-color: var(--aws-text);
     }
 
     .btn-sm {
-      padding: 5px 10px;
-      font-size: 11.5px;
-      border-radius: 7px;
+      padding: 4px 11px;
+      font-size: 12px;
+      border-radius: 16px;
     }
 
-    .btn-danger {
-      background: rgba(239, 68, 68, 0.14);
-      color: #f87171;
-      border: 1px solid rgba(239, 68, 68, 0.35);
+    .btn-blue-outline {
+      background: #ffffff;
+      color: var(--aws-blue);
+      border: 1px solid var(--aws-blue);
     }
 
-    .btn-danger:hover { background: rgba(239, 68, 68, 0.28); }
+    .btn-blue-outline:hover { background: #f2f8fd; }
 
-    .btn-success-soft {
-      background: rgba(16, 185, 129, 0.14);
-      color: #34d399;
-      border: 1px solid rgba(16, 185, 129, 0.35);
+    .btn-danger-outline {
+      background: #ffffff;
+      color: var(--aws-red);
+      border: 1px solid var(--aws-red);
     }
 
-    .btn-success-soft:hover { background: rgba(16, 185, 129, 0.26); }
+    .btn-danger-outline:hover { background: var(--aws-red-bg); }
 
-    /* Status Alert Banner */
+    /* AWS ALERT BANNERS */
     .alert-box {
       margin-top: 14px;
-      padding: 14px 16px;
-      border-radius: 12px;
+      padding: 12px 15px;
+      border-radius: 8px;
       font-size: 13px;
       line-height: 1.5;
       display: none;
     }
 
-    .alert-dedup {
-      display: block;
-      background: rgba(245, 158, 11, 0.12);
-      border: 1px solid rgba(245, 158, 11, 0.5);
-      color: #fde68a;
-    }
-
     .alert-new {
       display: block;
-      background: rgba(16, 185, 129, 0.12);
-      border: 1px solid rgba(16, 185, 129, 0.5);
-      color: #a7f3d0;
+      background: var(--aws-green-bg);
+      border: 1px solid var(--aws-green-border);
+      color: #035c0a;
+    }
+
+    .alert-dedup {
+      display: block;
+      background: var(--aws-warn-bg);
+      border: 1px solid var(--aws-warn-border);
+      color: #6b4c00;
     }
 
     .alert-err {
       display: block;
-      background: rgba(239, 68, 68, 0.12);
-      border: 1px solid rgba(239, 68, 68, 0.5);
-      color: #fecaca;
+      background: var(--aws-red-bg);
+      border: 1px solid var(--aws-red);
+      color: #9e0e0e;
     }
 
-    /* Tree & Code Blocks */
+    /* TREE & CONSOLE */
     .tree-box {
-      background: #070b14;
-      border: 1px solid var(--border);
-      border-radius: 12px;
+      background: #161e2d;
+      color: #f8fafc;
+      border: 1px solid #2b384c;
+      border-radius: 6px;
       padding: 14px 16px;
       font-family: 'JetBrains Mono', monospace;
       font-size: 12.5px;
-      line-height: 1.55;
-      color: #7dd3fc;
+      line-height: 1.5;
       overflow-x: auto;
       white-space: pre;
-      max-height: 250px;
+      max-height: 230px;
       overflow-y: auto;
-      margin-bottom: 14px;
+      margin-bottom: 16px;
     }
 
-    /* Tables */
+    .console-box {
+      background: #0f141e;
+      color: #e2e8f0;
+      border-radius: 6px;
+      padding: 14px 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      line-height: 1.55;
+      height: 180px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+
+    /* TABLES */
     .table-wrap {
       overflow-x: auto;
-      max-height: 270px;
+      max-height: 260px;
       overflow-y: auto;
-      border: 1px solid var(--border);
-      border-radius: 12px;
+      border: 1px solid var(--aws-border);
+      border-radius: 6px;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 12.5px;
+      font-size: 13px;
     }
 
     th {
-      background: var(--surface-2);
-      color: var(--muted);
+      background: var(--aws-table-head);
+      color: var(--aws-muted);
       text-align: left;
-      padding: 10px 12px;
-      font-weight: 600;
+      padding: 9px 12px;
+      font-weight: 700;
+      border-bottom: 1px solid var(--aws-border);
       position: sticky;
       top: 0;
       z-index: 1;
@@ -470,107 +585,120 @@
 
     td {
       padding: 9px 12px;
-      border-top: 1px solid rgba(36, 48, 74, 0.65);
+      border-bottom: 1px solid #eaeded;
       vertical-align: middle;
     }
 
-    tr:hover td {
-      background: rgba(56, 189, 248, 0.04);
-    }
+    tr:hover td { background: #f2f8fd; }
 
-    .mono {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 12px;
-    }
+    .mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
 
     .badge {
       display: inline-block;
       padding: 2px 8px;
-      border-radius: 6px;
+      border-radius: 4px;
       font-size: 11px;
-      font-weight: 600;
+      font-weight: 700;
     }
 
     .badge-chunk {
-      background: rgba(129, 140, 248, 0.16);
-      color: #a5b4fc;
-      border: 1px solid rgba(129, 140, 248, 0.3);
+      background: #fff7eb;
+      color: #b85600;
+      border: 1px solid #ffca80;
     }
 
     .badge-manifest {
-      background: rgba(16, 185, 129, 0.16);
-      color: #6ee7b7;
-      border: 1px solid rgba(16, 185, 129, 0.3);
+      background: #f2f8f0;
+      color: var(--aws-green);
+      border: 1px solid #9be2a0;
     }
 
-    /* Console Log */
-    .console-box {
-      background: #050810;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 14px 16px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 12px;
-      line-height: 1.55;
-      color: #cbd5e1;
-      height: 190px;
-      overflow-y: auto;
-      white-space: pre-wrap;
-    }
-
-    .aws-section {
-      margin-bottom: 22px;
-    }
-
-    .actions-cell {
-      display: flex;
-      gap: 6px;
-      flex-wrap: nowrap;
-    }
+    .actions-cell { display: flex; gap: 6px; flex-wrap: nowrap; }
+    .aws-section { margin-bottom: 20px; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <!-- HEADER -->
-    <header>
-      <div class="brand">
-        <div class="logo-badge">HV</div>
-        <div>
-          <h1>HelixVault Cloud Storage Engine</h1>
-          <p>C11 Content-Defined Chunking &bull; N-ary Directory Trie &bull; Real AWS S3 Hybrid Tiering &bull; VIT Pune Group 14</p>
+  <!-- AWS CONSOLE TOP NAVIGATION BAR -->
+  <nav class="aws-topbar">
+    <div class="aws-left">
+      <a class="aws-logo" href="#">
+        <div class="aws-logo-svg">
+          <span class="aws-wordmark">aws</span>
+          <svg class="aws-smile" viewBox="0 0 100 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 7C26 21 66 23 91 10" stroke="#FF9900" stroke-width="5.5" stroke-linecap="round"/>
+            <path d="M84 5L94 9.5L88.5 19" stroke="#FF9900" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
         </div>
+      </a>
+      <div class="aws-divider"></div>
+      <div class="aws-service-name">
+        <span class="s3-icon">S3</span>
+        <span>Amazon S3 &bull; HelixVault C11 Engine</span>
       </div>
-      <div class="header-badges">
-        <span class="pill pill-aws">
-          <span class="dot"></span>
-          <span id="awsHeaderBadge">AWS S3: Connecting...</span>
-        </span>
-        <button class="btn btn-secondary btn-sm" onclick="refreshAll()">&#x21bb; Refresh All</button>
+      <div class="aws-search-pill">
+        <span>&#x1F50D;</span>
+        <span id="awsSearchBucket">s3://sahil-vit-group14-storage</span>
       </div>
-    </header>
+    </div>
 
-    <!-- KPI METRICS ROW -->
+    <div class="aws-right">
+      <div class="aws-region">
+        <span class="live-dot"></span>
+        <span id="awsRegionPill">Asia Pacific (Sydney) ap-southeast-2</span>
+      </div>
+      <div class="aws-account">
+        <div class="aws-account-org">VIT Pune &bull; Group 14</div>
+        <div class="aws-account-user">Sahil Godage (SY-IT-B-3)</div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- AWS BREADCRUMB SUB-BAR -->
+  <div class="subbar">
+    <div class="breadcrumb">
+      <a href="#">Amazon S3</a>
+      <span>/</span>
+      <a href="#">Buckets</a>
+      <span>/</span>
+      <strong id="breadcrumbBucket">sahil-vit-group14-storage</strong>
+    </div>
+    <div class="row-inline">
+      <button class="btn btn-aws-secondary btn-sm" onclick="refreshAll()">&#x21bb; Refresh Console</button>
+      <button class="btn btn-aws-orange btn-sm" id="topSyncBtn" onclick="syncToAws()">&#x2601; Sync Local Pool to AWS S3</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- PAGE HEADER -->
+    <div class="page-title-row">
+      <div>
+        <h1>HelixVault Hybrid Object Storage</h1>
+        <p>Live C11 Content-Based Deduplication (FastCDC + SHA-256) &bull; N-ary Directory Trie &bull; Real Amazon S3 Cloud Sync</p>
+      </div>
+    </div>
+
+    <!-- REAL-TIME ANALYTICS KPI ROW -->
     <div class="kpi-grid">
       <div class="kpi-card">
-        <div class="kpi-label">Logical Data Ingested</div>
+        <div class="kpi-label">Total Logical Data</div>
         <div class="kpi-value" id="kpiLogical">--</div>
-        <div class="kpi-sub" id="kpiObjects">0 logical objects across 0 buckets</div>
+        <div class="kpi-sub" id="kpiObjects">0 objects across 0 local buckets</div>
       </div>
 
-      <div class="kpi-card kpi-cyan">
-        <div class="kpi-label">Physical Storage Used</div>
+      <div class="kpi-card kpi-blue">
+        <div class="kpi-label">Physical Disk Pool Used</div>
         <div class="kpi-value" id="kpiPhysical">--</div>
-        <div class="kpi-sub" id="kpiChunks">0 unique SHA-256 chunks on disk</div>
+        <div class="kpi-sub" id="kpiChunks">0 unique SHA-256 chunks stored</div>
       </div>
 
       <div class="kpi-card kpi-green">
         <div class="kpi-label">Storage Space Saved</div>
         <div class="kpi-value" id="kpiSaved">--</div>
-        <div class="kpi-sub">Eliminated via FastCDC + Gear Hash</div>
+        <div class="kpi-sub">Duplicate blocks eliminated by FastCDC</div>
       </div>
 
-      <div class="kpi-card kpi-amber">
-        <div class="kpi-label">AWS Cloud Bill Reduction</div>
+      <div class="kpi-card kpi-orange">
+        <div class="kpi-label">AWS S3 Bill Reduction</div>
         <div class="kpi-value" id="kpiRatio">0.00%</div>
         <div class="progress-bar">
           <div class="progress-fill" id="kpiProgressBar"></div>
@@ -580,108 +708,110 @@
 
     <!-- MAIN 2-COLUMN WORKSPACE -->
     <div class="main-grid">
-      <!-- LEFT: UPLOAD & DEDUPLICATION ENGINE -->
+      <!-- LEFT: UPLOAD PANEL -->
       <div class="card">
         <div class="card-header">
-          <div class="card-title">Upload File to C11 Engine</div>
+          <div class="card-title">Upload Object (C11 Deduplication Engine)</div>
           <span class="tag">FastCDC + SHA-256</span>
         </div>
-
-        <div class="form-group">
-          <label for="bucketSelect">Target Local Bucket</label>
-          <div class="row-inline">
-            <select id="bucketSelect" onchange="loadTree()"></select>
-            <button class="btn btn-secondary btn-sm" style="white-space:nowrap;" onclick="createBucketPrompt()">+ New Bucket</button>
+        <div class="card-body">
+          <div class="form-group">
+            <label for="bucketSelect">Local Logical Bucket</label>
+            <div class="row-inline">
+              <select id="bucketSelect" onchange="loadTree()"></select>
+              <button class="btn btn-aws-secondary btn-sm" style="white-space:nowrap;" onclick="createBucketPrompt()">Create bucket</button>
+            </div>
           </div>
+
+          <div class="form-group">
+            <label for="objectKeyInput">Object Key (Folder / File Name in Trie)</label>
+            <input type="text" id="objectKeyInput" placeholder="e.g. Viva/notes.pdf or Backup/notes_copy.pdf" value="Viva/report.txt" />
+            <div class="field-hint">Tip: Upload the same file again under a different folder/name to see instant deduplication!</div>
+          </div>
+
+          <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+            <input type="file" id="fileInput" style="display:none" onchange="handleFileSelect(this.files[0])" />
+            <div style="font-size:28px;">&#x1F4C2;</div>
+            <div class="dropzone-title" id="dropzoneTitle">Click to choose a file or drag &amp; drop here</div>
+            <div class="dropzone-sub" id="dropzoneSub">Choose any non-empty file (TXT, PDF, DOCX, Code, Image)</div>
+          </div>
+
+          <button class="btn btn-aws-primary-full" id="uploadBtn" onclick="uploadSelectedFile()">
+            Upload Object to HelixVault
+          </button>
+
+          <div id="uploadAlert" class="alert-box"></div>
         </div>
-
-        <div class="form-group">
-          <label for="objectKeyInput">Object Key / Virtual Folder Path (for N-ary Tree)</label>
-          <input type="text" id="objectKeyInput" placeholder="e.g. Viva/report.txt or Backup/report_copy.txt" value="Viva/report.txt" />
-        </div>
-
-        <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
-          <input type="file" id="fileInput" style="display:none" onchange="handleFileSelect(this.files[0])" />
-          <div class="dropzone-icon">&#x1F4E4;</div>
-          <div class="dropzone-text" id="dropzoneTitle">Click to select a file or drag &amp; drop here</div>
-          <div class="dropzone-sub" id="dropzoneSub">Upload any file (TXT, PDF, Code, Image) — identical chunks auto-deduplicate!</div>
-        </div>
-
-        <button class="btn btn-primary" id="uploadBtn" onclick="uploadSelectedFile()">
-          Upload &amp; Run Content-Based Deduplication
-        </button>
-
-        <div id="uploadAlert" class="alert-box"></div>
       </div>
 
-      <!-- RIGHT: N-ARY DIRECTORY TREE (TRIE) + OBJECTS -->
+      <!-- RIGHT: N-ARY DIRECTORY TREE & OBJECT LIST -->
       <div class="card">
         <div class="card-header">
-          <div class="card-title">N-ary Directory Tree (Trie DSA Visualizer)</div>
+          <div class="card-title">File Hierarchy Tree (N-ary Trie DSA)</div>
           <span class="tag">src/tree.c (First-Child / Next-Sibling)</span>
         </div>
+        <div class="card-body">
+          <div class="tree-box" id="treeOutput">Loading N-ary Directory Tree from helixvault.exe...</div>
 
-        <div class="tree-box" id="treeOutput">Loading N-ary Directory Tree from C11 engine...</div>
-
-        <div style="font-size:12.5px; font-weight:600; color:#cbd5e1; margin-bottom:8px;">
-          Objects in Selected Bucket (Lossless Download &amp; RefCount GC):
+          <label style="margin-bottom:8px;">Objects in Bucket (Lossless Integrity &amp; RefCount GC)</label>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Object Key</th>
+                  <th>Size</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="objectsTableBody">
+                <tr><td colspan="3" style="color:#545b64;">Loading objects...</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
-        <div class="table-wrap">
+      </div>
+    </div>
+
+    <!-- REAL AWS S3 CLOUD BUCKET TABLE -->
+    <div class="card aws-section">
+      <div class="card-header">
+        <div class="card-title">
+          Real Amazon S3 Cloud Bucket Objects
+          <span class="tag tag-aws" id="awsStatsTag">Connecting to AWS Sydney...</span>
+        </div>
+        <div class="row-inline">
+          <button class="btn btn-aws-secondary btn-sm" onclick="loadAwsObjects()">&#x21bb; Refresh S3</button>
+          <button class="btn btn-aws-orange btn-sm" id="syncBtn" onclick="syncToAws()">&#x2601; Sync to AWS S3</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="table-wrap" style="max-height:260px;">
           <table>
             <thead>
               <tr>
-                <th>Object Key</th>
+                <th>Storage Type</th>
+                <th>Amazon S3 Object Key (s3://sahil-vit-group14-storage/...)</th>
                 <th>Size</th>
-                <th>Actions</th>
+                <th>Last Modified (UTC)</th>
               </tr>
             </thead>
-            <tbody id="objectsTableBody">
-              <tr><td colspan="3" style="color:#94a3b8;">Loading objects...</td></tr>
+            <tbody id="awsTableBody">
+              <tr><td colspan="4" style="color:#545b64;">Querying live AWS S3 Sydney bucket...</td></tr>
             </tbody>
           </table>
         </div>
       </div>
     </div>
 
-    <!-- REAL AWS S3 CLOUD PANEL -->
-    <div class="card aws-section">
-      <div class="card-header">
-        <div class="card-title">
-          Real AWS S3 Hybrid Cloud Tier
-          <span class="tag tag-aws" id="awsStatsTag">Sydney (ap-southeast-2)</span>
-        </div>
-        <div class="row-inline">
-          <button class="btn btn-secondary btn-sm" onclick="loadAwsObjects()">&#x21bb; Query Live S3</button>
-          <button class="btn btn-aws" id="syncBtn" onclick="syncToAws()">
-            &#x2601; Sync Unique Chunks to Real AWS S3
-          </button>
-        </div>
-      </div>
-
-      <div class="table-wrap" style="max-height:260px;">
-        <table>
-          <thead>
-            <tr>
-              <th>Type</th>
-              <th>AWS S3 Key (s3://sahil-vit-group14-storage/...)</th>
-              <th>Size</th>
-              <th>Last Modified (UTC)</th>
-            </tr>
-          </thead>
-          <tbody id="awsTableBody">
-            <tr><td colspan="4" style="color:#94a3b8;">Connecting to AWS S3 Sydney...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- LIVE ENGINE TERMINAL LOG -->
+    <!-- LIVE C11 & AWS CONSOLE OUTPUT -->
     <div class="card">
       <div class="card-header">
-        <div class="card-title">Live C11 Engine &amp; AWS Boto3 Execution Console</div>
-        <button class="btn btn-secondary btn-sm" onclick="clearConsole()">Clear Log</button>
+        <div class="card-title">Live C11 Engine &amp; AWS Boto3 Execution Log</div>
+        <button class="btn btn-aws-secondary btn-sm" onclick="clearConsole()">Clear Log</button>
       </div>
-      <div class="console-box" id="consoleLog">[System] HelixVault Web Dashboard initialized. Connected directly to helixvault.exe &amp; Real AWS S3.</div>
+      <div class="card-body">
+        <div class="console-box" id="consoleLog">[System] HelixVault AWS S3 Console ready. Every action executes the real C11 `helixvault.exe` binary and real AWS Boto3 SDK.</div>
+      </div>
     </div>
   </div>
 
@@ -696,13 +826,19 @@
     }
 
     function clearConsole() {
-      document.getElementById('consoleLog').textContent = '[System] Console cleared.';
+      document.getElementById('consoleLog').textContent = '[System] Execution log cleared.';
     }
 
     function formatBytes(bytes) {
       if (bytes < 1024) return bytes + ' B';
       if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KiB';
       return (bytes / (1024 * 1024)).toFixed(2) + ' MiB';
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, m => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[m]));
     }
 
     // Drag & Drop handlers
@@ -718,12 +854,20 @@
     function handleFileSelect(file) {
       if (!file) return;
       selectedFile = file;
+      const alertBox = document.getElementById('uploadAlert');
+      alertBox.className = 'alert-box';
+
       document.getElementById('dropzoneTitle').textContent = `Selected: ${file.name} (${formatBytes(file.size)})`;
-      document.getElementById('dropzoneSub').textContent = 'Ready to process through C11 FastCDC Chunker';
-      const keyInput = document.getElementById('objectKeyInput');
-      if (!keyInput.value || keyInput.value === 'Viva/report.txt') {
-        keyInput.value = `Viva/${file.name}`;
+      if (file.size === 0) {
+        document.getElementById('dropzoneSub').textContent = 'Warning: This file is 0 Bytes (empty). Choose a file with actual content.';
+        alertBox.className = 'alert-box alert-err';
+        alertBox.innerHTML = `<strong>Empty File (0 Bytes):</strong> <code>${escapeHtml(file.name)}</code> has 0 bytes of data. Please select a non-empty file!`;
+      } else {
+        document.getElementById('dropzoneSub').textContent = 'Ready for C11 FastCDC chunking & SHA-256 deduplication';
       }
+
+      const keyInput = document.getElementById('objectKeyInput');
+      keyInput.value = `Viva/${file.name}`;
     }
 
     async function loadStats() {
@@ -739,7 +883,10 @@
       document.getElementById('kpiSaved').textContent = d.saved_size_str;
       document.getElementById('kpiRatio').textContent = d.dedup_ratio.toFixed(2) + '%';
       document.getElementById('kpiProgressBar').style.width = Math.min(100, d.dedup_ratio) + '%';
-      document.getElementById('awsHeaderBadge').textContent = `AWS S3: ${d.aws_bucket} (${d.aws_region})`;
+
+      document.getElementById('awsSearchBucket').textContent = `s3://${d.aws_bucket}`;
+      document.getElementById('breadcrumbBucket').textContent = d.aws_bucket;
+      document.getElementById('awsRegionPill').textContent = `Asia Pacific (Sydney) ${d.aws_region}`;
 
       const sel = document.getElementById('bucketSelect');
       const prev = sel.value || 'vit-demo';
@@ -764,38 +911,57 @@
 
       const tbody = document.getElementById('objectsTableBody');
       if (!json.objects || json.objects.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" style="color:#94a3b8;">No objects in this bucket yet.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="3" style="color:#545b64;">No objects stored in this bucket yet.</td></tr>';
         return;
       }
 
-      tbody.innerHTML = json.objects.map(obj => `
-        <tr>
-          <td class="mono">${obj.key}</td>
-          <td>${obj.size}</td>
-          <td class="actions-cell">
-            <button class="btn btn-success-soft btn-sm" onclick="verifyObject('${bucket}', '${obj.key}')">Verify SHA-256</button>
-            <a class="btn btn-secondary btn-sm" style="text-decoration:none;" href="/api/download?bucket=${encodeURIComponent(bucket)}&key=${encodeURIComponent(obj.key)}">Download</a>
-            <button class="btn btn-danger btn-sm" onclick="deleteObject('${bucket}', '${obj.key}')">Delete + GC</button>
-          </td>
-        </tr>
-      `).join('');
+      tbody.innerHTML = '';
+      json.objects.forEach(obj => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="mono">${escapeHtml(obj.key)}</td>
+          <td>${escapeHtml(obj.size)}</td>
+          <td class="actions-cell"></td>
+        `;
+        const cell = tr.querySelector('.actions-cell');
+
+        const verifyBtn = document.createElement('button');
+        verifyBtn.className = 'btn btn-blue-outline btn-sm';
+        verifyBtn.textContent = 'Verify SHA-256';
+        verifyBtn.onclick = () => verifyObject(bucket, obj.key);
+
+        const dlLink = document.createElement('a');
+        dlLink.className = 'btn btn-aws-secondary btn-sm';
+        dlLink.textContent = 'Download';
+        dlLink.href = `/api/download?bucket=${encodeURIComponent(bucket)}&key=${encodeURIComponent(obj.key)}`;
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'btn btn-danger-outline btn-sm';
+        delBtn.textContent = 'Delete + GC';
+        delBtn.onclick = () => deleteObject(bucket, obj.key);
+
+        cell.appendChild(verifyBtn);
+        cell.appendChild(dlLink);
+        cell.appendChild(delBtn);
+        tbody.appendChild(tr);
+      });
     }
 
     async function loadAwsObjects() {
       const tbody = document.getElementById('awsTableBody');
-      tbody.innerHTML = '<tr><td colspan="4" style="color:#94a3b8;">Querying live AWS S3 Sydney bucket via Boto3...</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="4" style="color:#545b64;">Fetching live objects from Amazon S3 Sydney...</td></tr>';
       try {
         const res = await fetch('/api/aws/list');
         const json = await res.json();
         if (!json.ok) {
-          tbody.innerHTML = `<tr><td colspan="4" style="color:#f87171;">AWS Error: ${json.error}</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="4" style="color:#d91515;">AWS Error: ${escapeHtml(json.error)}</td></tr>`;
           return;
         }
         document.getElementById('awsStatsTag').textContent =
           `${json.bucket} | ${json.chunks_count} Chunks & ${json.manifests_count} Manifests (${formatBytes(json.total_bytes)})`;
 
         if (json.items.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="4" style="color:#94a3b8;">AWS Bucket is empty.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="4" style="color:#545b64;">Bucket is empty.</td></tr>';
           return;
         }
 
@@ -806,13 +972,13 @@
                 ${item.kind === 'chunk' ? 'PHYSICAL CHUNK' : 'MANIFEST'}
               </span>
             </td>
-            <td class="mono">${item.key}</td>
+            <td class="mono">${escapeHtml(item.key)}</td>
             <td>${formatBytes(item.size)}</td>
-            <td class="mono" style="color:#94a3b8;">${item.last_modified}</td>
+            <td class="mono" style="color:#545b64;">${escapeHtml(item.last_modified)}</td>
           </tr>
         `).join('');
       } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="4" style="color:#f87171;">Connection failed: ${e}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4" style="color:#d91515;">Connection error: ${escapeHtml(e)}</td></tr>`;
       }
     }
 
@@ -823,18 +989,23 @@
         alertBox.textContent = 'Please select or drag & drop a file first!';
         return;
       }
+      if (selectedFile.size === 0) {
+        alertBox.className = 'alert-box alert-err';
+        alertBox.innerHTML = `<strong>Cannot upload 0-Byte file!</strong> The file <code>${escapeHtml(selectedFile.name)}</code> is completely empty (0 B). Please pick a file with real data (like a PDF, TXT, Code, or Image).`;
+        return;
+      }
 
       const bucket = document.getElementById('bucketSelect').value || 'vit-demo';
       const key = document.getElementById('objectKeyInput').value.trim() || `Viva/${selectedFile.name}`;
       const btn = document.getElementById('uploadBtn');
 
       btn.disabled = true;
-      btn.textContent = 'Running C11 FastCDC & SHA-256 Hashing...';
+      btn.textContent = 'Running C11 FastCDC & SHA-256...';
 
       const reader = new FileReader();
       reader.onload = async () => {
         try {
-          const base64 = reader.result.split(',')[1];
+          const base64 = reader.result.split(',')[1] || '';
           const res = await fetch('/api/upload', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -848,10 +1019,10 @@
             alertBox.textContent = 'Upload failed: ' + (json.error || json.log);
           } else if (json.is_deduplicated) {
             alertBox.className = 'alert-box alert-dedup';
-            alertBox.innerHTML = `<strong>DEDUPLICATION DETECTED!</strong><br/>File content already exists in pool! <strong>0 new physical chunks</strong> written to disk. Existing SHA-256 blocks reused &amp; RefCount incremented.`;
+            alertBox.innerHTML = `<strong>&#x26A1; DEDUPLICATION DETECTED!</strong><br/>Content already exists in storage pool! <strong>0 new physical chunks</strong> written to disk. Existing SHA-256 blocks reused &amp; RefCount incremented.`;
           } else {
             alertBox.className = 'alert-box alert-new';
-            alertBox.innerHTML = `<strong>NEW UNIQUE DATA STORED!</strong><br/>File partitioned into variable CDC chunks and written to disk.<br/><span class="mono">SHA-256: ${json.sha256.slice(0, 32)}...</span>`;
+            alertBox.innerHTML = `<strong>&#x2705; Successfully uploaded new unique data!</strong><br/>Partitioned via FastCDC &amp; stored on disk.<br/><span class="mono">SHA-256: ${json.sha256.slice(0, 36)}...</span>`;
           }
 
           await loadStats();
@@ -861,29 +1032,32 @@
           alertBox.textContent = 'Network Error: ' + err;
         } finally {
           btn.disabled = false;
-          btn.textContent = 'Upload & Run Content-Based Deduplication';
+          btn.textContent = 'Upload Object to HelixVault';
         }
       };
       reader.readAsDataURL(selectedFile);
     }
 
     async function syncToAws() {
-      const btn = document.getElementById('syncBtn');
-      btn.disabled = true;
-      btn.textContent = 'Syncing with AWS S3 Sydney...';
+      const btn1 = document.getElementById('syncBtn');
+      const btn2 = document.getElementById('topSyncBtn');
+      btn1.disabled = true; btn2.disabled = true;
+      btn1.textContent = 'Syncing with AWS S3...';
+      btn2.textContent = 'Syncing...';
       try {
         const res = await fetch('/api/aws/sync', { method: 'POST' });
         const json = await res.json();
         logToConsole('REAL AWS S3 CLOUD SYNC (Boto3)', json.log || json.error);
         await loadAwsObjects();
       } finally {
-        btn.disabled = false;
-        btn.textContent = '☁ Sync Unique Chunks to Real AWS S3';
+        btn1.disabled = false; btn2.disabled = false;
+        btn1.textContent = '☁ Sync to AWS S3';
+        btn2.textContent = '☁ Sync Local Pool to AWS S3';
       }
     }
 
     async function deleteObject(bucket, key) {
-      if (!confirm(`Delete '${bucket}/${key}' and run Garbage Collection?`)) return;
+      if (!confirm(`Delete '${bucket}/${key}' and run Reference-Counted Garbage Collection?`)) return;
       const res = await fetch('/api/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -909,7 +1083,7 @@
     }
 
     async function createBucketPrompt() {
-      const name = prompt('Enter new bucket name (lowercase letters, numbers, hyphens):', 'vit-viva-new');
+      const name = prompt('Enter new local bucket name (lowercase letters, numbers, hyphens):', 'vit-viva-new');
       if (!name) return;
       const res = await fetch('/api/bucket', {
         method: 'POST',
@@ -929,7 +1103,6 @@
       await loadAwsObjects();
     }
 
-    // Boot
     refreshAll();
   </script>
 </body>

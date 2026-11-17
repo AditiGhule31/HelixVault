@@ -263,16 +263,30 @@ class HelixHandler(BaseHTTPRequestHandler):
                 body = self.read_json_body()
                 bucket = body.get("bucket", "vit-demo").strip()
                 key = body.get("key", "").strip()
-                b64_data = body.get("data_base64", "")
+                b64_data = body.get("data_base64", None)
 
-                if not bucket or not key or not b64_data:
-                    self.send_json({"ok": False, "error": "Bucket, key, and file data are required"}, 400)
+                if not bucket or not key:
+                    self.send_json({"ok": False, "error": "Bucket name and Object Key are required."}, 400)
+                    return
+
+                if b64_data is None or b64_data == "":
+                    self.send_json({
+                        "ok": False,
+                        "error": "Selected file is empty (0 Bytes)! Please select a file that has some content (e.g., > 0 Bytes) so FastCDC can chunk and deduplicate it."
+                    }, 400)
                     return
 
                 # Ensure bucket exists
                 run_helix(["mb", bucket])
 
                 raw_bytes = base64.b64decode(b64_data)
+                if len(raw_bytes) == 0:
+                    self.send_json({
+                        "ok": False,
+                        "error": "Selected file is empty (0 Bytes)! Please choose a file with content."
+                    }, 400)
+                    return
+
                 orig_sha = hashlib.sha256(raw_bytes).hexdigest()
 
                 tmp_fd, tmp_path = tempfile.mkstemp(prefix="helix_up_")
