@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HelixVault — S3-Inspired Deduplicating Cloud Storage</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --surface: #111827;
+      --surface-2: #161f33;
+      --border: #24304a;
+      --text: #f3f4f6;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-2: #818cf8;
+      --green: #10b981;
+      --amber: #f59e0b;
+      --red: #ef4444;
+      --aws: #ff9900;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: radial-gradient(circle at 15% 0%, #172554 0%, var(--bg) 42%);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 20px 28px 40px;
+    }
+
+    .container {
+      max-width: 1380px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      padding: 18px 24px;
+      background: rgba(17, 24, 39, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      margin-bottom: 22px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .logo-badge {
+      width: 46px;
+      height: 46px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 20px;
+      color: #0b0f19;
+      box-shadow: 0 0 20px rgba(56, 189, 248, 0.35);
+    }
+
+    .brand h1 {
+      font-size: 21px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .brand p {
+      font-size: 12.5px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .header-badges {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 14px;
+      border-radius: 999px;
+      font-size: 12.5px;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+    }
+
+    .pill-aws {
+      border-color: rgba(255, 153, 0, 0.45);
+      background: rgba(255, 153, 0, 0.1);
+      color: #ffb84d;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(1.25); }
+    }
+
+    /* KPI Row */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 22px;
+    }
+
+    @media (max-width: 980px) {
+      .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    .kpi-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px 20px;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .kpi-card:hover {
+      transform: translateY(-2px);
+      border-color: #364970;
+    }
+
+    .kpi-label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .kpi-value {
+      font-size: 28px;
+      font-weight: 800;
+      margin-top: 8px;
+      letter-spacing: -0.02em;
+    }
+
+    .kpi-sub {
+      font-size: 12.5px;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    .kpi-green .kpi-value { color: var(--green); }
+    .kpi-cyan .kpi-value { color: var(--accent); }
+    .kpi-amber .kpi-value { color: #fbbf24; }
+
+    .progress-bar {
+      height: 7px;
+      background: #1e293b;
+      border-radius: 999px;
+      margin-top: 10px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent), var(--green));
+      border-radius: 999px;
+      transition: width 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    /* Main Grid */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.25fr;
+      gap: 20px;
+      margin-bottom: 22px;
+    }
+
+    @media (max-width: 1020px) {
+      .main-grid { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px 22px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .card-title {
+      font-size: 15.5px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tag {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 9px;
+      border-radius: 6px;
+      background: rgba(56, 189, 248, 0.14);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    .tag-aws {
+      background: rgba(255, 153, 0, 0.14);
+      color: #ffb84d;
+      border-color: rgba(255, 153, 0, 0.35);
+    }
+
+    /* Form Controls */
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    label {
+      display: block;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: #cbd5e1;
+      margin-bottom: 6px;
+    }
+
+    input[type="text"], select {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 13px;
+      border-radius: 10px;
+      font-size: 13.5px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus, select:focus {
+      border-color: var(--accent);
+    }
+
+    .row-inline {
+      display: flex;
+      gap: 8px;
+    }
+
+    /* Dropzone */
+    .dropzone {
+      border: 2px dashed #334155;
+      border-radius: 14px;
+      padding: 26px 18px;
+      text-align: center;
+      background: rgba(11, 15, 25, 0.6);
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 14px;
+    }
+
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--accent);
+      background: rgba(56, 189, 248, 0.06);
+    }
+
+    .dropzone-icon {
+      font-size: 32px;
+      margin-bottom: 6px;
+    }
+
+    .dropzone-text {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #e2e8f0;
+    }
+
+    .dropzone-sub {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-size: 13.5px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.18s;
+      font-family: inherit;
+    }
+
+    .btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #0ea5e9, #6366f1);
+      color: white;
+      width: 100%;
+      padding: 12px;
+      font-size: 14px;
+      box-shadow: 0 6px 18px rgba(14, 165, 233, 0.25);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      filter: brightness(1.1);
+      transform: translateY(-1px);
+    }
+
+    .btn-aws {
+      background: linear-gradient(135deg, #f59e0b, #ea580c);
+      color: #0b0f19;
+      font-weight: 700;
+      box-shadow: 0 6px 18px rgba(245, 158, 11, 0.25);
+    }
+
+    .btn-aws:hover:not(:disabled) {
+      filter: brightness(1.1);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: var(--surface-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      border-color: var(--accent);
+    }
+
+    .btn-sm {
+      padding: 5px 10px;
+      font-size: 11.5px;
+      border-radius: 7px;
+    }
+
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.14);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.35);
+    }
+
+    .btn-danger:hover { background: rgba(239, 68, 68, 0.28); }
+
+    .btn-success-soft {
+      background: rgba(16, 185, 129, 0.14);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.35);
+    }
+
+    .btn-success-soft:hover { background: rgba(16, 185, 129, 0.26); }
+
+    /* Status Alert Banner */
+    .alert-box {
+      margin-top: 14px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      font-size: 13px;
+      line-height: 1.5;
+      display: none;
+    }
+
+    .alert-dedup {
+      display: block;
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.5);
+      color: #fde68a;
+    }
+
+    .alert-new {
+      display: block;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.5);
+      color: #a7f3d0;
+    }
+
+    .alert-err {
+      display: block;
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.5);
+      color: #fecaca;
+    }
+
+    /* Tree & Code Blocks */
+    .tree-box {
+      background: #070b14;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12.5px;
+      line-height: 1.55;
+      color: #7dd3fc;
+      overflow-x: auto;
+      white-space: pre;
+      max-height: 250px;
+      overflow-y: auto;
+      margin-bottom: 14px;
+    }
+
+    /* Tables */
+    .table-wrap {
+      overflow-x: auto;
+      max-height: 270px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+    }
+
+    th {
+      background: var(--surface-2);
+      color: var(--muted);
+      text-align: left;
+      padding: 10px 12px;
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    td {
+      padding: 9px 12px;
+      border-top: 1px solid rgba(36, 48, 74, 0.65);
+      vertical-align: middle;
+    }
+
+    tr:hover td {
+      background: rgba(56, 189, 248, 0.04);
+    }
+
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .badge-chunk {
+      background: rgba(129, 140, 248, 0.16);
+      color: #a5b4fc;
+      border: 1px solid rgba(129, 140, 248, 0.3);
+    }
+
+    .badge-manifest {
+      background: rgba(16, 185, 129, 0.16);
+      color: #6ee7b7;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    /* Console Log */
+    .console-box {
+      background: #050810;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      line-height: 1.55;
+      color: #cbd5e1;
+      height: 190px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+
+    .aws-section {
+      margin-bottom: 22px;
+    }
+
+    .actions-cell {
+      display: flex;
+      gap: 6px;
+      flex-wrap: nowrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- HEADER -->
+    <header>
+      <div class="brand">
+        <div class="logo-badge">HV</div>
+        <div>
+          <h1>HelixVault Cloud Storage Engine</h1>
+          <p>C11 Content-Defined Chunking &bull; N-ary Directory Trie &bull; Real AWS S3 Hybrid Tiering &bull; VIT Pune Group 14</p>
+        </div>
+      </div>
+      <div class="header-badges">
+        <span class="pill pill-aws">
+          <span class="dot"></span>
+          <span id="awsHeaderBadge">AWS S3: Connecting...</span>
+        </span>
+        <button class="btn btn-secondary btn-sm" onclick="refreshAll()">&#x21bb; Refresh All</button>
+      </div>
+    </header>
+
+    <!-- KPI METRICS ROW -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Logical Data Ingested</div>
+        <div class="kpi-value" id="kpiLogical">--</div>
+        <div class="kpi-sub" id="kpiObjects">0 logical objects across 0 buckets</div>
+      </div>
+
+      <div class="kpi-card kpi-cyan">
+        <div class="kpi-label">Physical Storage Used</div>
+        <div class="kpi-value" id="kpiPhysical">--</div>
+        <div class="kpi-sub" id="kpiChunks">0 unique SHA-256 chunks on disk</div>
+      </div>
+
+      <div class="kpi-card kpi-green">
+        <div class="kpi-label">Storage Space Saved</div>
+        <div class="kpi-value" id="kpiSaved">--</div>
+        <div class="kpi-sub">Eliminated via FastCDC + Gear Hash</div>
+      </div>
+
+      <div class="kpi-card kpi-amber">
+        <div class="kpi-label">AWS Cloud Bill Reduction</div>
+        <div class="kpi-value" id="kpiRatio">0.00%</div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="kpiProgressBar"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIN 2-COLUMN WORKSPACE -->
+    <div class="main-grid">
+      <!-- LEFT: UPLOAD & DEDUPLICATION ENGINE -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Upload File to C11 Engine</div>
+          <span class="tag">FastCDC + SHA-256</span>
+        </div>
+
+        <div class="form-group">
+          <label for="bucketSelect">Target Local Bucket</label>
+          <div class="row-inline">
+            <select id="bucketSelect" onchange="loadTree()"></select>
+            <button class="btn btn-secondary btn-sm" style="white-space:nowrap;" onclick="createBucketPrompt()">+ New Bucket</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="objectKeyInput">Object Key / Virtual Folder Path (for N-ary Tree)</label>
+          <input type="text" id="objectKeyInput" placeholder="e.g. Viva/report.txt or Backup/report_copy.txt" value="Viva/report.txt" />
+        </div>
+
+        <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+          <input type="file" id="fileInput" style="display:none" onchange="handleFileSelect(this.files[0])" />
+          <div class="dropzone-icon">&#x1F4E4;</div>
+          <div class="dropzone-text" id="dropzoneTitle">Click to select a file or drag &amp; drop here</div>
+          <div class="dropzone-sub" id="dropzoneSub">Upload any file (TXT, PDF, Code, Image) — identical chunks auto-deduplicate!</div>
+        </div>
+
+        <button class="btn btn-primary" id="uploadBtn" onclick="uploadSelectedFile()">
+          Upload &amp; Run Content-Based Deduplication
+        </button>
+
+        <div id="uploadAlert" class="alert-box"></div>
+      </div>
+
+      <!-- RIGHT: N-ARY DIRECTORY TREE (TRIE) + OBJECTS -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">N-ary Directory Tree (Trie DSA Visualizer)</div>
+          <span class="tag">src/tree.c (First-Child / Next-Sibling)</span>
+        </div>
+
+        <div class="tree-box" id="treeOutput">Loading N-ary Directory Tree from C11 engine...</div>
+
+        <div style="font-size:12.5px; font-weight:600; color:#cbd5e1; margin-bottom:8px;">
+          Objects in Selected Bucket (Lossless Download &amp; RefCount GC):
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Object Key</th>
+                <th>Size</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="objectsTableBody">
+              <tr><td colspan="3" style="color:#94a3b8;">Loading objects...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- REAL AWS S3 CLOUD PANEL -->
+    <div class="card aws-section">
+      <div class="card-header">
+        <div class="card-title">
+          Real AWS S3 Hybrid Cloud Tier
+          <span class="tag tag-aws" id="awsStatsTag">Sydney (ap-southeast-2)</span>
+        </div>
+        <div class="row-inline">
+          <button class="btn btn-secondary btn-sm" onclick="loadAwsObjects()">&#x21bb; Query Live S3</button>
+          <button class="btn btn-aws" id="syncBtn" onclick="syncToAws()">
+            &#x2601; Sync Unique Chunks to Real AWS S3
+          </button>
+        </div>
+      </div>
+
+      <div class="table-wrap" style="max-height:260px;">
+        <table>
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>AWS S3 Key (s3://sahil-vit-group14-storage/...)</th>
+              <th>Size</th>
+              <th>Last Modified (UTC)</th>
+            </tr>
+          </thead>
+          <tbody id="awsTableBody">
+            <tr><td colspan="4" style="color:#94a3b8;">Connecting to AWS S3 Sydney...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- LIVE ENGINE TERMINAL LOG -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Live C11 Engine &amp; AWS Boto3 Execution Console</div>
+        <button class="btn btn-secondary btn-sm" onclick="clearConsole()">Clear Log</button>
+      </div>
+      <div class="console-box" id="consoleLog">[System] HelixVault Web Dashboard initialized. Connected directly to helixvault.exe &amp; Real AWS S3.</div>
+    </div>
+  </div>
+
+  <script>
+    let selectedFile = null;
+
+    function logToConsole(title, text) {
+      const box = document.getElementById('consoleLog');
+      const ts = new Date().toLocaleTimeString();
+      box.textContent += `\n\n[${ts}] === ${title} ===\n${text}`;
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function clearConsole() {
+      document.getElementById('consoleLog').textContent = '[System] Console cleared.';
+    }
+
+    function formatBytes(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KiB';
+      return (bytes / (1024 * 1024)).toFixed(2) + ' MiB';
+    }
+
+    // Drag & Drop handlers
+    const dz = document.getElementById('dropzone');
+    dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.classList.add('dragover'); });
+    dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+    dz.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dz.classList.remove('dragover');
+      if (e.dataTransfer.files.length > 0) handleFileSelect(e.dataTransfer.files[0]);
+    });
+
+    function handleFileSelect(file) {
+      if (!file) return;
+      selectedFile = file;
+      document.getElementById('dropzoneTitle').textContent = `Selected: ${file.name} (${formatBytes(file.size)})`;
+      document.getElementById('dropzoneSub').textContent = 'Ready to process through C11 FastCDC Chunker';
+      const keyInput = document.getElementById('objectKeyInput');
+      if (!keyInput.value || keyInput.value === 'Viva/report.txt') {
+        keyInput.value = `Viva/${file.name}`;
+      }
+    }
+
+    async function loadStats() {
+      const res = await fetch('/api/stats');
+      const json = await res.json();
+      if (!json.ok) return;
+
+      const d = json.data;
+      document.getElementById('kpiLogical').textContent = d.logical_size_str;
+      document.getElementById('kpiObjects').textContent = `${d.total_objects} logical objects across ${d.total_buckets} buckets`;
+      document.getElementById('kpiPhysical').textContent = d.physical_size_str;
+      document.getElementById('kpiChunks').textContent = `${d.unique_chunks} unique SHA-256 chunks on disk`;
+      document.getElementById('kpiSaved').textContent = d.saved_size_str;
+      document.getElementById('kpiRatio').textContent = d.dedup_ratio.toFixed(2) + '%';
+      document.getElementById('kpiProgressBar').style.width = Math.min(100, d.dedup_ratio) + '%';
+      document.getElementById('awsHeaderBadge').textContent = `AWS S3: ${d.aws_bucket} (${d.aws_region})`;
+
+      const sel = document.getElementById('bucketSelect');
+      const prev = sel.value || 'vit-demo';
+      sel.innerHTML = '';
+      const list = d.buckets.length ? d.buckets : ['vit-demo'];
+      list.forEach(b => {
+        const opt = document.createElement('option');
+        opt.value = b;
+        opt.textContent = b;
+        sel.appendChild(opt);
+      });
+      if (list.includes(prev)) sel.value = prev;
+    }
+
+    async function loadTree() {
+      const bucket = document.getElementById('bucketSelect').value || 'vit-demo';
+      const res = await fetch(`/api/tree?bucket=${encodeURIComponent(bucket)}`);
+      const json = await res.json();
+      if (!json.ok) return;
+
+      document.getElementById('treeOutput').textContent = json.tree_ascii || '(Empty bucket)';
+
+      const tbody = document.getElementById('objectsTableBody');
+      if (!json.objects || json.objects.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" style="color:#94a3b8;">No objects in this bucket yet.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = json.objects.map(obj => `
+        <tr>
+          <td class="mono">${obj.key}</td>
+          <td>${obj.size}</td>
+          <td class="actions-cell">
+            <button class="btn btn-success-soft btn-sm" onclick="verifyObject('${bucket}', '${obj.key}')">Verify SHA-256</button>
+            <a class="btn btn-secondary btn-sm" style="text-decoration:none;" href="/api/download?bucket=${encodeURIComponent(bucket)}&key=${encodeURIComponent(obj.key)}">Download</a>
+            <button class="btn btn-danger btn-sm" onclick="deleteObject('${bucket}', '${obj.key}')">Delete + GC</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    async function loadAwsObjects() {
+      const tbody = document.getElementById('awsTableBody');
+      tbody.innerHTML = '<tr><td colspan="4" style="color:#94a3b8;">Querying live AWS S3 Sydney bucket via Boto3...</td></tr>';
+      try {
+        const res = await fetch('/api/aws/list');
+        const json = await res.json();
+        if (!json.ok) {
+          tbody.innerHTML = `<tr><td colspan="4" style="color:#f87171;">AWS Error: ${json.error}</td></tr>`;
+          return;
+        }
+        document.getElementById('awsStatsTag').textContent =
+          `${json.bucket} | ${json.chunks_count} Chunks & ${json.manifests_count} Manifests (${formatBytes(json.total_bytes)})`;
+
+        if (json.items.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="4" style="color:#94a3b8;">AWS Bucket is empty.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = json.items.map(item => `
+          <tr>
+            <td>
+              <span class="badge ${item.kind === 'chunk' ? 'badge-chunk' : 'badge-manifest'}">
+                ${item.kind === 'chunk' ? 'PHYSICAL CHUNK' : 'MANIFEST'}
+              </span>
+            </td>
+            <td class="mono">${item.key}</td>
+            <td>${formatBytes(item.size)}</td>
+            <td class="mono" style="color:#94a3b8;">${item.last_modified}</td>
+          </tr>
+        `).join('');
+      } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="4" style="color:#f87171;">Connection failed: ${e}</td></tr>`;
+      }
+    }
+
+    async function uploadSelectedFile() {
+      const alertBox = document.getElementById('uploadAlert');
+      if (!selectedFile) {
+        alertBox.className = 'alert-box alert-err';
+        alertBox.textContent = 'Please select or drag & drop a file first!';
+        return;
+      }
+
+      const bucket = document.getElementById('bucketSelect').value || 'vit-demo';
+      const key = document.getElementById('objectKeyInput').value.trim() || `Viva/${selectedFile.name}`;
+      const btn = document.getElementById('uploadBtn');
+
+      btn.disabled = true;
+      btn.textContent = 'Running C11 FastCDC & SHA-256 Hashing...';
+
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const base64 = reader.result.split(',')[1];
+          const res = await fetch('/api/upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bucket, key, data_base64: base64 })
+          });
+          const json = await res.json();
+          logToConsole(`C11 PUT -> ${bucket}/${key}`, json.log || json.error);
+
+          if (!json.ok) {
+            alertBox.className = 'alert-box alert-err';
+            alertBox.textContent = 'Upload failed: ' + (json.error || json.log);
+          } else if (json.is_deduplicated) {
+            alertBox.className = 'alert-box alert-dedup';
+            alertBox.innerHTML = `<strong>DEDUPLICATION DETECTED!</strong><br/>File content already exists in pool! <strong>0 new physical chunks</strong> written to disk. Existing SHA-256 blocks reused &amp; RefCount incremented.`;
+          } else {
+            alertBox.className = 'alert-box alert-new';
+            alertBox.innerHTML = `<strong>NEW UNIQUE DATA STORED!</strong><br/>File partitioned into variable CDC chunks and written to disk.<br/><span class="mono">SHA-256: ${json.sha256.slice(0, 32)}...</span>`;
+          }
+
+          await loadStats();
+          await loadTree();
+        } catch (err) {
+          alertBox.className = 'alert-box alert-err';
+          alertBox.textContent = 'Network Error: ' + err;
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Upload & Run Content-Based Deduplication';
+        }
+      };
+      reader.readAsDataURL(selectedFile);
+    }
+
+    async function syncToAws() {
+      const btn = document.getElementById('syncBtn');
+      btn.disabled = true;
+      btn.textContent = 'Syncing with AWS S3 Sydney...';
+      try {
+        const res = await fetch('/api/aws/sync', { method: 'POST' });
+        const json = await res.json();
+        logToConsole('REAL AWS S3 CLOUD SYNC (Boto3)', json.log || json.error);
+        await loadAwsObjects();
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '☁ Sync Unique Chunks to Real AWS S3';
+      }
+    }
+
+    async function deleteObject(bucket, key) {
+      if (!confirm(`Delete '${bucket}/${key}' and run Garbage Collection?`)) return;
+      const res = await fetch('/api/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bucket, key })
+      });
+      const json = await res.json();
+      logToConsole(`DELETE + GC -> ${bucket}/${key}`, json.log || json.error);
+      await loadStats();
+      await loadTree();
+    }
+
+    async function verifyObject(bucket, key) {
+      const res = await fetch('/api/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bucket, key })
+      });
+      const json = await res.json();
+      logToConsole(`LOSSLESS INTEGRITY CHECK -> ${bucket}/${key}`, json.log || json.error);
+      if (json.ok) {
+        alert(`INTEGRITY PASS (100% Lossless)!\n\nObject: ${key}\nSize: ${formatBytes(json.size)}\nSHA-256: ${json.sha256}`);
+      }
+    }
+
+    async function createBucketPrompt() {
+      const name = prompt('Enter new bucket name (lowercase letters, numbers, hyphens):', 'vit-viva-new');
+      if (!name) return;
+      const res = await fetch('/api/bucket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim() })
+      });
+      const json = await res.json();
+      logToConsole(`CREATE BUCKET -> ${name}`, json.log || json.error);
+      await loadStats();
+      document.getElementById('bucketSelect').value = name.trim();
+      await loadTree();
+    }
+
+    async function refreshAll() {
+      await loadStats();
+      await loadTree();
+      await loadAwsObjects();
+    }
+
+    // Boot
+    refreshAll();
+  </script>
+</body>
+</html>
