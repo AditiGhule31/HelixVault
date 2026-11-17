@@ -240,12 +240,29 @@ static void cmd_put(Store *s, int argc, char **argv) {
         fprintf(stderr, "Bucket '%s' does not exist.\n", argv[0]);
         return;
     }
+    size_t before_chunks = s->pool ? s->pool->total_chunks : 0;
     printf("Uploading '%s' -> %s/%s ...\n", argv[2], argv[0], argv[1]);
     clock_t t0 = clock();
     int rc = object_put(s, argv[0], argv[1], argv[2], NULL);
     double elapsed = (double)(clock() - t0) / CLOCKS_PER_SEC;
-    if (rc == 0) printf("Upload OK (%.3f s)\n", elapsed);
-    else         printf("Upload FAILED (rc=%d)\n", rc);
+    if (rc == 0) {
+        size_t after_chunks = s->pool ? s->pool->total_chunks : 0;
+        size_t new_chunks = (after_chunks > before_chunks) ? (after_chunks - before_chunks) : 0;
+        printf("Upload OK (%.3f s)\n", elapsed);
+        if (new_chunks == 0) {
+            printf("-----------------------------------------------------------------\n");
+            printf(" [DEDUPLICATION DETECTED!] File content ALREADY EXISTS in pool!\n");
+            printf("  >> 0 new physical chunks written to disk!\n");
+            printf("  >> Existing chunks reused & Reference Count incremented.\n");
+            printf("-----------------------------------------------------------------\n");
+        } else {
+            printf("-----------------------------------------------------------------\n");
+            printf(" [NEW DATA STORED] %zu new unique chunk(s) created on disk!\n", new_chunks);
+            printf("-----------------------------------------------------------------\n");
+        }
+    } else {
+        printf("Upload FAILED (rc=%d)\n", rc);
+    }
 }
 
 static void cmd_get(Store *s, int argc, char **argv) {
@@ -463,18 +480,18 @@ static void run_interactive_menu(Store *s, const char *root) {
     while (1) {
         printf("\n=================================================================\n");
         printf("  HELIXVAULT: AWS S3-INSPIRED OBJECT STORAGE WITH DEDUPLICATION  \n");
-        printf("  Data Structures Course Project — Group 14 (VIT Pune)           \n");
+        printf("  Data Structures Course Project -- Group 14 (VIT Pune)          \n");
         printf("=================================================================\n");
-        printf("  [ 1 ] ⚡ 1-Click Complete Live Viva Demo (All Steps in One Go!)\n");
-        printf("  [ 2 ] 📤 Upload Original File (First Upload -> New Chunk Created)\n");
-        printf("  [ 3 ] 🔄 Upload Duplicate File (CDC Deduplication -> Zero New Chunks)\n");
-        printf("  [ 4 ] 📁 View Directory Hierarchy (N-ary Tree / Trie DSA)\n");
-        printf("  [ 5 ] 📊 View Storage & Cloud Cost Savings Analytics\n");
-        printf("  [ 6 ] ☁️ Sync to Real AWS S3 Cloud (Sydney Region)\n");
-        printf("  [ 7 ] 🌐 List Live Objects in AWS Cloud Bucket\n");
-        printf("  [ 8 ] 🗑️ Delete Object & Run Garbage Collection (Refcount Test)\n");
-        printf("  [ 9 ] 🔍 Lossless Integrity Check (SHA-256 Bit-by-Bit Verification)\n");
-        printf("  [ 0 ] ❌ Exit\n");
+        printf("  [ 1 ] Run 1-Click Complete Live Viva Demo (All Steps in One Go!)\n");
+        printf("  [ 2 ] Upload Original File (First Upload -> New Chunk Created)\n");
+        printf("  [ 3 ] Upload Duplicate File (CDC Deduplication -> Zero New Chunks)\n");
+        printf("  [ 4 ] View Directory Hierarchy (N-ary Tree / Trie DSA)\n");
+        printf("  [ 5 ] View Storage & Cloud Cost Savings Analytics\n");
+        printf("  [ 6 ] Sync to Real AWS S3 Cloud (Sydney Region)\n");
+        printf("  [ 7 ] List Live Objects in AWS Cloud Bucket\n");
+        printf("  [ 8 ] Delete Object & Run Garbage Collection (Refcount Test)\n");
+        printf("  [ 9 ] Lossless Integrity Check (SHA-256 Bit-by-Bit Verification)\n");
+        printf("  [ 0 ] Exit\n");
         printf("=================================================================\n");
         printf("Select option (0-9): ");
 
