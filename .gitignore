@@ -22,6 +22,10 @@ main_old_backup.c
 # Benchmark & Test Outputs
 benchmark_data/
 benchmark_restored/
+__pycache__/
+*.pyc
+retrieved_*.txt
+viva_verify.*
 
 .vscode/
 .idea/

@@ -34,11 +34,23 @@ helixvault/
 │   └── main.c            Interactive 9-step menu & 1-click viva demo harness
 │
 ├── aws_sync.py           Real AWS S3 Cloud Synchronization (Boto3 SDK)
+├── web_ui.py             Python HTTP server bridging Web UI to C11 engine & AWS S3
+├── dashboard.html        Authentic AWS S3 Cloudscape Web Dashboard Frontend
 ├── full_scale_test.py    Automated 7-stage benchmark & system verification suite
 ├── Makefile              MinGW / GCC build script
 ├── build_msvc.bat        MSVC compiler build script
 └── README.md             System architecture & presentation documentation
 ```
+
+---
+
+## 🌐 AWS S3-Style Web Dashboard UI
+
+Launch the interactive browser dashboard (connected live to `helixvault.exe` and Real AWS S3):
+```powershell
+python web_ui.py
+```
+Then open **`http://localhost:8080`** in Chrome/Edge for drag-and-drop file upload, instant deduplication detection banners, live N-ary Directory Tree visualization, SHA-256 integrity checks, RefCount Garbage Collection, and 1-click Real AWS S3 Cloud synchronization.
 
 ---
 
