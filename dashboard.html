@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Amazon S3 — HelixVault Deduplicating Cloud Console</title>
+  <title>HelixVault — S3-Inspired Deduplicating Cloud Storage</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
@@ -618,22 +618,17 @@
   </style>
 </head>
 <body>
-  <!-- AWS CONSOLE TOP NAVIGATION BAR -->
+  <!-- CONSOLE TOP NAVIGATION BAR -->
   <nav class="aws-topbar">
     <div class="aws-left">
-      <a class="aws-logo" href="#">
-        <div class="aws-logo-svg">
-          <span class="aws-wordmark">aws</span>
-          <svg class="aws-smile" viewBox="0 0 100 26" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M4 7C26 21 66 23 91 10" stroke="#FF9900" stroke-width="5.5" stroke-linecap="round"/>
-            <path d="M84 5L94 9.5L88.5 19" stroke="#FF9900" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </div>
-      </a>
+      <div class="aws-service-name">
+        <span class="s3-icon" style="background:#ff9900; color:#161e2d; font-weight:800; width:28px; height:28px; font-size:12px;">HV</span>
+        <span style="font-size:16px; font-weight:800; letter-spacing:-0.3px;">HelixVault</span>
+      </div>
       <div class="aws-divider"></div>
       <div class="aws-service-name">
         <span class="s3-icon">S3</span>
-        <span>Amazon S3 &bull; HelixVault C11 Engine</span>
+        <span>Object Storage &bull; C11 Deduplication Engine</span>
       </div>
       <div class="aws-search-pill">
         <span>&#x1F50D;</span>
